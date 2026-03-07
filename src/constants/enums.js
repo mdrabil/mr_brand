@@ -18,7 +18,7 @@ export const USER_ROLE = Object.freeze({
   STORE_MANAGER: "STORE_MANAGER", // Manages store ops
   STAFF: "STAFF",                 // Store staff (billing, packing)
   CHEF: "CHEF",                   // Kitchen staff
-
+AUTHOR:"AUTHOR",
   // 🚚 DELIVERY
   RIDER: "RIDER",                 // Delivery partner
   DELIVERY_MANAGER: "DELIVERY_MANAGER", // Future ops control
@@ -48,7 +48,8 @@ export const ORDER_STATUS = Object.freeze({
   READY: "READY",
   OUT_FOR_DELIVERY: "OUT_FOR_DELIVERY",
   DELIVERED: "DELIVERED",
-  CANCELLED: "CANCELLED"
+  CANCELLED: "CANCELLED",
+    ON_HOLD: "ON_HOLD",
 });
 
 
@@ -104,6 +105,7 @@ export const MODULE_KEY = Object.freeze({
   STORE: "STORE",
   STORE_TIMING: "STORE_TIMING",
   STORE_STAFF: "STORE_STAFF",
+  AUTHOR: "AUTHOR",
   STORE_DOCUMENT: "STORE_DOCUMENT",
   STORE_PAYOUT: "STORE_PAYOUT",
 

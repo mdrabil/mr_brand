@@ -1,174 +1,248 @@
 import Cart from "../models/Cart.model.js";
 import Product from "../models/Product.model.js";
-import Counter from "../models/Counter.model.js";
-import Order from "../models/Order.model.js";
-import Store from "../models/Store.model.js";
 import Joi from "joi";
-import { USER_ROLE, ORDER_STATUS } from "../constants/enums.js";
+import mongoose from "mongoose";
+import { USER_ROLE } from "../constants/enums.js";
+import { formatCart } from "../utils/formatProduct.js";
 
-// ------------------- Validation Schemas -------------------
+/* ------------------- Helpers ------------------- */
+
+const objectId = (value, helpers) => {
+  if (!mongoose.Types.ObjectId.isValid(value)) {
+    return helpers.message("Invalid ObjectId");
+  }
+  return value;
+};
+
+/* ------------------- Validation Schemas ------------------- */
+
 const addItemSchema = Joi.object({
-  product: Joi.string().required(),
-  variantLabel: Joi.string().allow(""),
-  sellingPrice: Joi.number().positive().required(),
-  qty: Joi.number().integer().min(1).required()
+  productId: Joi.string().custom(objectId).required(),
+  variantId: Joi.string().custom(objectId).required(),
+  qty: Joi.number().integer().min(1).required(),
 });
 
 const updateItemSchema = Joi.object({
-  qty: Joi.number().integer().min(0).required()
+  productId: Joi.string().custom(objectId).required(),
+  variantId: Joi.string().custom(objectId).required(),
+  qty: Joi.number().integer().min(0).required(),
 });
 
-// ------------------- Add Item to Cart -------------------
+/* ------------------- Add To Cart ------------------- */
+
 export const addToCart = async (req, res) => {
   try {
-    if (!req.user.roles.includes(USER_ROLE.CUSTOMER))
-      return res.status(403).json({ message: "Only customers can access cart" });
-
     const { error, value } = addItemSchema.validate(req.body);
-    if (error) return res.status(400).json({ message: error.details[0].message });
+    if (error)
+      return res.status(400).json({ message: error.message });
 
-    const product = await Product.findById(value.product);
-    if (!product) return res.status(404).json({ message: "Product not found" });
+    const { productId, variantId, qty } = value;
+    const customerId = req.user._id;
 
-    let cart = await Cart.findOne({ customer: req.user._id });
+    // console.log("get the data ",customerId)
+
+    const product = await Product.findById(productId);
+    if (!product)
+      return res.status(404).json({ message: "Product not found" });
+
+    const variant = product.variants.id(variantId);
+    if (!variant)
+      return res.status(400).json({ message: "Invalid variant" });
+
+    let cart = await Cart.findOne({ customerId });
 
     if (!cart) {
-      cart = new Cart({ customer: req.user._id, items: [value] });
+      cart = await Cart.create({
+        customerId,
+        items: [{ productId, variantId, qty }],
+      });
     } else {
-      const itemIndex = cart.items.findIndex(
-        i => i.product.toString() === value.product
+      const existing = cart.items.find(
+        i =>
+          i.productId.toString() === productId &&
+          i.variantId.toString() === variantId
       );
 
-      if (itemIndex > -1) {
-        cart.items[itemIndex].qty += value.qty; // increment quantity
-      } else {
-        cart.items.push(value);
-      }
+      if (existing) existing.qty += qty;
+      else cart.items.push({ productId, variantId, qty });
+
+      await cart.save();
     }
 
-    await cart.save();
-    res.json({ success: true, cart });
+    await cart.populate({
+      path: "items.productId",
+      select: "name images variants gstPercent",
+    });
+
+    return res.json({
+      success: true,
+      items: formatCart(cart),
+    });
+
   } catch (err) {
-    console.error("addToCart:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-// ------------------- Update Cart Item -------------------
+/* ------------------- Update Cart Item ------------------- */
+
 export const updateCartItem = async (req, res) => {
   try {
-    if (!req.user.roles.includes(USER_ROLE.CUSTOMER))
-      return res.status(403).json({ message: "Only customers can access cart" });
-
-    const { productId } = req.params;
+ 
     const { error, value } = updateItemSchema.validate(req.body);
-    if (error) return res.status(400).json({ message: error.details[0].message });
+    if (error)
+      return res.status(400).json({ message: error.message });
 
-    const cart = await Cart.findOne({ customer: req.user._id });
-    if (!cart) return res.status(404).json({ message: "Cart not found" });
+    const { productId, variantId, qty } = value;
+    const customerId = req.user._id;
 
-    const itemIndex = cart.items.findIndex(i => i.product.toString() === productId);
-    if (itemIndex === -1) return res.status(404).json({ message: "Item not in cart" });
+    const cart = await Cart.findOne({ customerId });
+    if (!cart)
+      return res.status(404).json({ message: "Cart not found" });
 
-    if (value.qty === 0) {
-      cart.items.splice(itemIndex, 1); // remove item
+    const itemIndex = cart.items.findIndex(
+      (item) =>
+        item.productId.toString() === productId &&
+        item.variantId.toString() === variantId
+    );
+
+    if (itemIndex === -1)
+      return res.status(404).json({ message: "Item not in cart" });
+
+    if (qty === 0) {
+      cart.items.splice(itemIndex, 1);
     } else {
-      cart.items[itemIndex].qty = value.qty;
+      cart.items[itemIndex].qty = qty;
     }
 
     await cart.save();
-    res.json({ success: true, cart });
+
+    return res.json({ success: true, cart });
   } catch (err) {
     console.error("updateCartItem:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-// ------------------- Get Customer Cart -------------------
-export const getCart = async (req, res) => {
+export const updateCart = async (req, res) => {
   try {
-    if (!req.user.roles.includes(USER_ROLE.CUSTOMER))
-      return res.status(403).json({ message: "Only customers can access cart" });
+    const { productId, variantId, qty } = req.body;
+    const customerId = req.user._id;
 
-    const cart = await Cart.findOne({ customer: req.user._id }).populate({
-      path: "items.product",
-      select: "name sellingPrice images"
-    });
+    const cart = await Cart.findOne({ customerId });
+    if (!cart)
+      return res.status(404).json({ message: "Cart not found" });
 
-    res.json({ success: true, cart });
-  } catch (err) {
-    console.error("getCart:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-// ------------------- Clear Cart -------------------
-export const clearCart = async (req, res) => {
-  try {
-    if (!req.user.roles.includes(USER_ROLE.CUSTOMER))
-      return res.status(403).json({ message: "Only customers can access cart" });
-
-    await Cart.findOneAndUpdate({ customer: req.user._id }, { items: [] });
-    res.json({ success: true, message: "Cart cleared" });
-  } catch (err) {
-    console.error("clearCart:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-// ------------------- Checkout / Create Order -------------------
-export const checkoutCart = async (req, res) => {
-  try {
-    if (!req.user.roles.includes(USER_ROLE.CUSTOMER))
-      return res.status(403).json({ message: "Only customers can place orders" });
-
-    const cart = await Cart.findOne({ customer: req.user._id });
-    if (!cart || cart.items.length === 0)
-      return res.status(400).json({ message: "Cart is empty" });
-
-    const storeIdSet = [...new Set(cart.items.map(i => i.product.store.toString()))];
-    if (storeIdSet.length > 1)
-      return res.status(400).json({ message: "All items must be from same store" });
-
-    const store = await Store.findById(storeIdSet[0]);
-    if (!store) return res.status(404).json({ message: "Store not found" });
-
-    // Generate order counter
-    const counter = await Counter.findByIdAndUpdate(
-      { _id: "ORDER" },
-      { $inc: { seq: 1 } },
-      { new: true, upsert: true }
+    const item = cart.items.find(
+      (i) =>
+        i.productId.toString() === productId &&
+        i.variantId.toString() === variantId
     );
 
-    const totalAmount = cart.items.reduce((sum, i) => sum + i.sellingPrice * i.qty, 0);
-    const gstAmount = cart.items.reduce((sum, i) => sum + (i.sellingPrice * i.qty * (i.gstPercent || 0)) / 100, 0);
-    const payableAmount = totalAmount + gstAmount;
+    if (!item)
+      return res.status(404).json({ message: "Item not found" });
 
-    const order = await Order.create({
-      rmOrderId: `ORD${counter.seq.toString().padStart(5, "0")}`,
-      customer: req.user._id,
-      store: store._id,
-      items: cart.items.map(i => ({
-        productName: i.product.name,
-        variantLabel: i.variantLabel,
-        sellingPrice: i.sellingPrice,
-        qty: i.qty,
-        gstPercent: i.product.gstPercent || 0
-      })),
-      totalAmount,
-      gstAmount,
-      payableAmount,
-      status: ORDER_STATUS.PLACED,
-      deliveryAddress: req.body.deliveryAddress
-    });
+    if (qty <= 0) {
+      cart.items = cart.items.filter(
+        (i) =>
+          !(
+            i.productId.toString() === productId &&
+            i.variantId.toString() === variantId
+          )
+      );
+    } else {
+      item.qty = qty;
+    }
 
-    // Clear cart after checkout
-    cart.items = [];
     await cart.save();
 
-    res.status(201).json({ success: true, order });
+    await cart.populate({
+      path: "items.productId",
+      select: "name images variants gstPercent",
+    });
+
+    return res.json({
+      success: true,
+      items: formatCart(cart),
+    });
   } catch (err) {
-    console.error("checkoutCart:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+/* ------------------- Remove From Cart ------------------- */
+
+export const removeFromCart = async (req, res) => {
+  try {
+    const { productId, variantId } = req.body;
+    const customerId = req.user._id;
+
+    const cart = await Cart.findOne({ customerId });
+    if (!cart)
+      return res.status(404).json({ message: "Cart not found" });
+
+    cart.items = cart.items.filter(
+      (i) =>
+        !(
+          i.productId.toString() === productId &&
+          i.variantId.toString() === variantId
+        )
+    );
+
+    await cart.save();
+
+    await cart.populate({
+      path: "items.productId",
+      select: "name images variants gstPercent",
+    });
+
+    return res.json({
+      success: true,
+      items: formatCart(cart),
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+
+export const getCart = async (req, res) => {
+  try {
+    const customerId = req.user._id;
+
+    let cart = await Cart.findOne({ customerId }).populate({
+      path: "items.productId",
+      select: "name images variants gstPercent",
+    });
+
+    if (!cart) {
+      cart = await Cart.create({ customerId, items: [] });
+    }
+
+    return res.json({
+      success: true,
+      items: formatCart(cart),
+    });
+
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+/* ------------------- Clear Cart ------------------- */
+export const clearCart = async (req, res) => {
+  try {
+    const customerId = req.user._id;
+
+    await Cart.findOneAndUpdate(
+      { customerId },
+      { items: [] }
+    );
+
+    return res.json({
+      success: true,
+      items: [],
+    });
+  } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
 };

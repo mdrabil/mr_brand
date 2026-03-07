@@ -6,10 +6,6 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User.model.js";
-import { USER_ROLE } from "../constants/enums.js";
-import ModuleModel from "../models/Module.model.js";
-import ModulePermissionModel from "../models/ModulePermission.model.js";
-import { config } from "../config/config.js";
 import { generateToken } from "../utils/jwt.js";
 
 

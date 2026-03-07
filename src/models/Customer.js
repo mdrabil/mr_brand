@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import { generateRMId } from "../utils/rmId.js";
 
 const addressSchema = new mongoose.Schema(
   {
@@ -7,10 +6,22 @@ const addressSchema = new mongoose.Schema(
     addressLine: String,
     mobile: String,
     city: String,
+    type:String,
     state: String,
     pincode: String,
     latitude: Number,
     longitude: Number,
+      location: {
+      type: {
+        type: String,
+        enum: ["Point"],
+        default: "Point",
+      },
+      coordinates: {
+        type: [Number], // [longitude, latitude]
+        required: true,
+      },
+    },
     isDefault: { type: Boolean, default: false },
   },
   { _id: true }
@@ -18,26 +29,22 @@ const addressSchema = new mongoose.Schema(
 
 const customerSchema = new mongoose.Schema(
   {
-    rmCustomerId: {
-      type: String,
-      unique: true,
-      index: true,
-    },
-    fullName: String,
-    email: String,
-    mobile: { type: String, index: true },
+    rmCustomerId: { type: String, unique: true, index: true },
+logo:String,
+    fullName: { type: String, required: true },
+    email: { type: String, unique: true, sparse: true },
+    mobile: { type: String, unique: true, required: true },
+
+    // password: { type: String, required: true },
+    password: { type: String, required: true, select: false },
+    role: { type: String, default: "CUSTOMER" },
+
+    refreshToken: String,
     isBlocked: { type: Boolean, default: false },
+
     addresses: [addressSchema],
   },
   { timestamps: true }
 );
-
-// ✅ Pre-save hook to generate RM ID
-customerSchema.pre("save", async function (next) {
-  if (!this.rmCustomerId) {
-    this.rmCustomerId = await generateRMId("RMCU"); // generate async ID here
-  }
-  next();
-});
 
 export default mongoose.model("Customer", customerSchema);

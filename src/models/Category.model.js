@@ -42,8 +42,12 @@
 
 // export default mongoose.model("Category", categorySchema);
 
+
+
+
+
 import mongoose from "mongoose";
-import { generateRMId } from "../utils/rmId.js";
+
 import { CATEGORY_STATUS } from "../constants/enums.js";
 
 const categorySchema = new mongoose.Schema(
@@ -59,6 +63,12 @@ const categorySchema = new mongoose.Schema(
       required: true,
       trim: true
     },
+
+    // ✅ CATEGORY IMAGE (OPTIONAL)
+    image: { 
+      url: String, 
+      public_id: String 
+    }, 
 
     status: {
       type: String,
@@ -80,19 +90,13 @@ const categorySchema = new mongoose.Schema(
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true
+      required: false
     }
   },
   { timestamps: true }
 );
 
-/* 🔥 ASYNC SAFE RM ID */
-categorySchema.pre("validate", async function (next) {
-  if (!this.rmCategoryId) {
-    this.rmCategoryId = await generateRMId("CAT");
-  }
-  next();
-});
+
 
 /* 🔥 UNIQUE CATEGORY UNDER SAME PARENT */
 categorySchema.index(

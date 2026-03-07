@@ -54,15 +54,21 @@
 //   },
 //   { timestamps: true }
 // );
+
+
+
+
+
 import mongoose from "mongoose";
-import { generateRMId } from "../utils/rmId.js";
+
 import { ORDER_STATUS } from "../constants/enums.js";
 
 const orderSchema = new mongoose.Schema(
   {
     rmOrderId: { type: String, unique: true, index: true },
 
-    customer: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    customerId: { type: mongoose.Schema.Types.ObjectId, ref: "Customer", required: true },
+    reason:String,
     store: { type: mongoose.Schema.Types.ObjectId, ref: "Store", required: true },
 
     items: [
@@ -97,6 +103,7 @@ const orderSchema = new mongoose.Schema(
 
     // ✅ Delivery
     deliveryDate: Date,
+    notes: String,
     deliverySlot: String,
     deliveryAddress: {
       fullAddress: String,
@@ -130,9 +137,6 @@ const orderSchema = new mongoose.Schema(
 
 // ================= AUTO ORDER ID + STATUS TIMELINE =================
 orderSchema.pre("save", async function (next) {
-  if (!this.rmOrderId) {
-    this.rmOrderId = await generateRMId("ORD");
-  }
 
   if (this.isModified("status")) {
     const now = new Date();

@@ -29,7 +29,8 @@ const productSchema = new mongoose.Schema(
     subCategory: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Category",
-      index: true
+      index: true,
+      default:null
     },
 
     name: {
@@ -37,13 +38,13 @@ const productSchema = new mongoose.Schema(
       required: true,
       index: true
     },
+  label: { type: String, required: true, default:"Weight" },
 
     description: String,
 
     // 🔥 VARIANTS (size / weight / price)
     variants: [
       {
-        label: { type: String, required: true },
         value: { type: String, required: true },
         mrp: Number,
         sellingPrice: { type: Number, required: true },
@@ -67,17 +68,36 @@ const productSchema = new mongoose.Schema(
       index: true
     },
 
-    images: {
-      type: [String],
-      default: []
-    },
-
+  images: [
+  {
+    url: String,
+    public_id: String
+  }
+  
+],
+  thumbnails: [
+  {
+    url: String,
+    public_id: String
+  }
+  
+],
+  
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
       index: true
     },
+    averageRating: {
+  type: Number,
+  default: 0
+},
+
+totalReviews: {
+  type: Number,
+  default: 0
+},
 
     allowedCreatorRoles: {
       type: [String],

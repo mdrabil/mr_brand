@@ -18,3 +18,19 @@ export const generateRMId = async (prefix, sequenceName = "DEFAULT") => {
   const paddedSeq = String(counter.seq).padStart(6, "0"); // 6 digit
   return `${prefix}${paddedSeq}`;
 };
+
+export const generateTransactionId = () => {
+  const randomNumber = Math.floor(1000000000 + Math.random() * 9000000000);
+  return `RM${randomNumber}`;
+}
+
+
+
+// const getNextSequence = async (name) => {
+//   const counter = await Counter.findByIdAndUpdate(
+//     name,
+//     { $inc: { seq: 1 } },
+//     { new: true, upsert: true, setDefaultsOnInsert: true }
+//   );
+//   return counter.seq;
+// };

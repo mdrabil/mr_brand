@@ -5,12 +5,25 @@ import storeRoutes from "./admin/store.routes.js";
 import staffRoutes from "./admin/storeStaff.routes.js";
 import categoryRoutes from "./admin/category.routes.js";
 import productRoutes from "./admin/product.routes.js";
+import publicProductRoutes from "./customer/customer.product.routes.js";
 import adminOrderRoutes from "./admin/order.routes.js";
 import permissionRoutes from "./admin/permission.routes.js";
 import roleRoutes from "./admin/role.routes.js";
 import CouponRoutes from "./admin/coupon.routes.js";
+// import paymentRoutes from "./admin/payment.routes.js";
 import customerAuthRoutes from "./customer/auth.routes.js";
 import customerRoutes from "./admin/customer.routes.js";
+import cartRoutes from "./customer/cart.routes.js";
+import customerOrdersRoutes from "./customer/customer.order.routes.js";
+import wishListRoutes from "./customer/wishlist.routes.js";
+import blogsRoutes from "../routes/blog.routes.js";
+import cmsPageRoutes from "../routes/cmsPage.routes.js";
+import HomePageRoutes from "../routes/homePage.routes.js";
+import ContactUsRoutes from "../routes/contact.routes.js";
+import JobRoutes from "../routes/job.routes.js";
+import CmsRoutes from "../routes/cms.routes.js";
+import FaqRoutes from "../routes/faq.routes.js";
+import TestimonialRoutes from "../routes/testimonial.routes.js";
 
 
 import { getUserStores } from "../middlewares/getUserStores.js";
@@ -22,7 +35,19 @@ const router = express.Router();
 // No auth required for login / signup
 router.use("/auth", authRoutes);
 router.use("/customer/auth", customerAuthRoutes);
-
+router.use("/public/products", publicProductRoutes);
+router.use("/public/coupon", publicProductRoutes);
+router.use("/customer/orders", customerOrdersRoutes);
+router.use("/customer/wishlist", wishListRoutes);
+router.use("/blogs", blogsRoutes);
+// router.use("/admin/cms", cmsPageRoutes);
+router.use("/admin/contact", ContactUsRoutes);
+router.use("/jobs", JobRoutes);
+router.use("/admin/homepage", HomePageRoutes);
+router.use("/admin/faq", FaqRoutes);
+router.use("/admin/testimonials", TestimonialRoutes);
+router.use("/cart", cartRoutes);
+router.use("/admin/cms", CmsRoutes);
 /* ===================== PROTECTED ROUTES ===================== */
 // Apply auth + store-access middleware globally for admin routes
 router.use("/admin", authMiddleware, getUserStores);
@@ -33,6 +58,7 @@ router.use("/admin/stores", storeRoutes);
 router.use("/admin/coupons", CouponRoutes);
 router.use("/admin/store-staff", staffRoutes);
 router.use("/admin/categories", categoryRoutes);
+// router.use("/admin/payment", paymentRoutes);
 router.use("/admin/products", productRoutes);
 router.use("/admin/orders", adminOrderRoutes);
 router.use("/admin/permissions", permissionRoutes);

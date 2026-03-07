@@ -10,9 +10,10 @@ import {
   getAllProducts,
   deleteProduct
 } from "../../controllers/product.controller.js";
-import { uploadProductImages } from "../../middlewares/upload.middleware.js";
+
 import { checkPermission } from "../../middlewares/checkPermission.middleware.js";
 import { MODULE_KEY } from "../../constants/enums.js";
+import { arrayImagesThumbnailsUpload } from "../../middlewares/upload.middleware.js";
 
 const router = express.Router();
 
@@ -22,7 +23,8 @@ router.post(
   authMiddleware,
  checkPermission(MODULE_KEY.PRODUCT,'create'),
   storeAccessMiddleware(),
-  uploadProductImages.array("images", 5), // max 5 images
+    // arrayImagesThumbnailsUpload("products", 10, 10),
+    arrayImagesThumbnailsUpload(10, 10),
   createProduct
 );
 
@@ -32,7 +34,7 @@ router.put(
   authMiddleware,
  checkPermission(MODULE_KEY.PRODUCT,'update'),
   storeAccessMiddleware(),
-  uploadProductImages.array("images", 5),
+    arrayImagesThumbnailsUpload(10, 10),
   updateProduct
 );
 

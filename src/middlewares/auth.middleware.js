@@ -61,6 +61,7 @@ if (!roleNames.length) {
 }
 
 req.user = {
+  ...user,
   _id: user._id,
   roles: roleNames, // CLEAN ROLES
   roleIds

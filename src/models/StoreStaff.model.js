@@ -21,6 +21,7 @@ const storeStaffSchema = new mongoose.Schema(
   
     },
 
+    
     role: {
       type: String,
       enum: [

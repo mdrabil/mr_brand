@@ -2,6 +2,7 @@ import Product from "../models/Product.model.js";
 import Store from "../models/Store.model.js";
 import Joi from "joi";
 import { USER_ROLE, PRODUCT_STATUS } from "../constants/enums.js";
+import cloudinary from "../config/cloudinaryConfig.js";
 
 // 🔹 Joi Validation Schemas
 const createProductSchema = Joi.object({
@@ -10,9 +11,9 @@ const createProductSchema = Joi.object({
   category: Joi.string().required(),
   subCategory: Joi.string().optional(),
   description: Joi.string().allow(""),
+  label: Joi.string().optional(),
   variants: Joi.array().items(
     Joi.object({
-      label: Joi.string().required(),
       value: Joi.string().required(),
       mrp: Joi.number().positive(),
       sellingPrice: Joi.number().positive().required(),
@@ -23,19 +24,17 @@ const createProductSchema = Joi.object({
   attributes: Joi.object().optional(),
   gstPercent: Joi.number().optional(),
   status: Joi.string().valid(...Object.values(PRODUCT_STATUS)).default(PRODUCT_STATUS.ACTIVE),
-  images: Joi.array().items(Joi.string()).optional()
 });
 
 const updateProductSchema = Joi.object({
   name: Joi.string(),
-  name: Joi.string(),
-  store: Joi.optional(),
+  store: Joi.string(),
   category: Joi.string(),
-  subCategory: Joi.string(),
+  subCategory: Joi.string().allow("", null),
   description: Joi.string().allow(""),
+  label: Joi.string(),
   variants: Joi.array().items(
     Joi.object({
-      label: Joi.string().required(),
       _id: Joi.string().optional(),
       value: Joi.string().required(),
       mrp: Joi.number().positive(),
@@ -45,92 +44,401 @@ const updateProductSchema = Joi.object({
     })
   ),
   attributes: Joi.object(),
+  deletedImageIds:Joi.array(),
+  deletedThumbnailIds:Joi.array(),
   gstPercent: Joi.number(),
   status: Joi.string().valid(...Object.values(PRODUCT_STATUS)),
-  images: Joi.array().items(Joi.string())
 }).min(1);
 
 
-
 // 🔹 CREATE PRODUCT
+
+
+// ------------------- CREATE PRODUCT -------------------
+// export const createProduct = async (req, res) => {
+//   try {
+
+
+//     const { error, value } = createProductSchema.validate(req.body);
+
+
+
+//     if (error) return res.status(400).json({ message: error.details[0].message });
+
+//     // 🔹 Store access check
+//     const store = await Store.findById(value.store);
+//     if (!store) return res.status(404).json({ message: "Store not found" });
+
+//     if (!req.user.roles.includes(USER_ROLE.SUPER_ADMIN)) {
+//       if (req.user.roles.includes(USER_ROLE.VENDOR) && store.owner.toString() !== req.user._id.toString())
+//         return res.status(403).json({ message: "Access denied" });
+
+//       if ([USER_ROLE.STORE_MANAGER, USER_ROLE.CHEF].some(r => req.user.roles.includes(r))) {
+//         if (req.staffRoleStoreId.toString() !== store._id.toString()) {
+//           return res.status(403).json({ message: "Access denied" });
+//         }
+//       }
+//     }
+
+//     // 🔹 Duplicate product per store
+//     const duplicate = await Product.findOne({ store: value.store, name: value.name });
+//     if (duplicate) return res.status(400).json({ message: "Product with same name already exists in this store" });
+
+//     // 🔹 Handle images & thumbnails upload
+//     let imageUrls = [];
+//     let thumbnailUrls = [];
+
+//     if (req.files && req.files.length > 0) {
+//       for (const file of req.files) {
+//         const uploaded = await cloudinary.uploader.upload(file.path, { folder: "products" });
+
+//         // distinguish image / thumbnail by fieldname
+//         if (file.fieldname === "images") imageUrls.push(uploaded.secure_url);
+//         if (file.fieldname === "thumbnails") thumbnailUrls.push(uploaded.secure_url);
+//       }
+//     }
+
+//     value.images = imageUrls;
+//     value.thumbnails = thumbnailUrls;
+//     value.createdBy = req.user._id;
+
+//     const product = await Product.create(value);
+
+//     res.status(201).json({ success: true, product });
+//   } catch (err) {
+//     console.error("createProduct:", err);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
+
+
 export const createProduct = async (req, res) => {
   try {
+    
+if(!req.user.roles.includes(USER_ROLE.SUPER_ADMIN)) {
+
+      const store = await Store.findById(product.store);
+
+      if (req.user.roles.includes(USER_ROLE.VENDOR)) {
+        if (store.owner.toString() !== req.user._id.toString())
+          return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (
+        [USER_ROLE.STORE_MANAGER, USER_ROLE.CHEF].some(r =>
+          req.user.roles.includes(r)
+        )
+      ) {
+        if (req.staffRoleStoreId.toString() !== store._id.toString())
+          return res.status(403).json({ message: "Access denied" });
+      }
+    }
+    // 🔥 Parse variants (FormData case)
+    if (req.body.variants && typeof req.body.variants === "string") {
+      req.body.variants = JSON.parse(req.body.variants);
+    }
+
     const { error, value } = createProductSchema.validate(req.body);
     if (error) return res.status(400).json({ message: error.details[0].message });
 
-    // Store access check
+    // 🔹 Store check
     const store = await Store.findById(value.store);
     if (!store) return res.status(404).json({ message: "Store not found" });
 
-    if (!req.user.roles.includes(USER_ROLE.SUPER_ADMIN)) {
-      if (req.user.roles.includes(USER_ROLE.VENDOR) && store.owner.toString() !== req.user._id.toString()) {
-        return res.status(403).json({ message: "Access denied" });
+    // 🔹 Duplicate check
+    const duplicate = await Product.findOne({ store: value.store, name: value.name });
+    if (duplicate)
+      return res.status(400).json({ message: "Product already exists in this store" });
+
+    // ✅ STEP 1: Create product FIRST (without images)
+    const product = await Product.create({
+      ...value,
+      images: [],
+      thumbnails: [],
+      createdBy: req.user._id,
+    });
+
+    let imageUrls = [];
+    let thumbnailUrls = [];
+
+    // ✅ STEP 2: Upload images AFTER product created
+    if (req.files) {
+
+      // Images
+      if (req.files.images) {
+        for (const file of req.files.images) {
+          const uploaded = await cloudinary.uploader.upload_stream(
+            { folder: "products" },
+            async (error, result) => {}
+          );
+        }
       }
-      if ([USER_ROLE.STORE_MANAGER, USER_ROLE.CHEF].some(r => req.user.roles.includes(r))) {
-        if (req.staffRoleStoreId.toString() !== store._id.toString()) {
-          return res.status(403).json({ message: "Access denied" });
+
+      // 🔥 Because we use memoryStorage, we must use buffer upload:
+
+      const uploadToCloudinary = (file, folder) => {
+        return new Promise((resolve, reject) => {
+          const stream = cloudinary.uploader.upload_stream(
+            { folder },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          );
+          stream.end(file.buffer);
+        });
+      };
+
+      if (req.files.images) {
+        for (const file of req.files.images) {
+          const result = await uploadToCloudinary(file, "products");
+         imageUrls.push({
+  url: result.secure_url,
+  public_id: result.public_id
+});
+        }
+      }
+
+      if (req.files.thumbnails) {
+        for (const file of req.files.thumbnails) {
+          const result = await uploadToCloudinary(file, "thumbnails");
+          thumbnailUrls.push({
+  url: result.secure_url,
+  public_id: result.public_id
+});
         }
       }
     }
 
-    // Duplicate product per store
-    const duplicate = await Product.findOne({ store: value.store, name: value.name });
-    if (duplicate) return res.status(400).json({ message: "Product with same name already exists in this store" });
+    // ✅ STEP 3: Update product with images
+    product.images = imageUrls;
+    product.thumbnails = thumbnailUrls;
+    await product.save();
 
-    // Images from multer
-    if (req.files && req.files.length > 0) {
-      value.images = req.files.map(f => `/uploads/products/${f.filename}`);
-    } else {
-      value.images = [];
-    }
-
-    value.createdBy = req.user._id;
-
-    const product = await Product.create(value);
     res.status(201).json({ success: true, product });
+
   } catch (err) {
     console.error("createProduct:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-// 🔹 UPDATE PRODUCT
+// ------------------- UPDATE PRODUCT -------------------
 export const updateProduct = async (req, res) => {
   try {
     const { productId } = req.params;
 
-    console.log("get the product",req.body)
-        const product2 = await Product.findById(productId);
+    // 🔥 Parse JSON fields safely
+    if (req.body.variants && typeof req.body.variants === "string") {
+      req.body.variants = JSON.parse(req.body.variants);
+    }
 
-        console.log("database",product2)
+    if (req.body.deletedImageIds && typeof req.body.deletedImageIds === "string") {
+      req.body.deletedImageIds = JSON.parse(req.body.deletedImageIds);
+    }
+
+    if (req.body.deletedThumbnailIds && typeof req.body.deletedThumbnailIds === "string") {
+      req.body.deletedThumbnailIds = JSON.parse(req.body.deletedThumbnailIds);
+    }
+
+    const { deletedImageIds = [], deletedThumbnailIds = [] } = req.body;
+
     const { error, value } = updateProductSchema.validate(req.body);
-    if (error) return res.status(400).json({ message: error.details[0].message });
+    if (error) {
+      return res.status(400).json({ message: error.details[0].message });
+    }
 
     const product = await Product.findById(productId);
-    if (!product) return res.status(404).json({ message: "Product not found" });
+    if (!product)
+      return res.status(404).json({ message: "Product not found" });
 
+    // 🔐 ROLE VALIDATION
+    if (!req.user.roles.includes(USER_ROLE.SUPER_ADMIN)) {
+      const store = await Store.findById(product.store);
 
-    // Duplicate name check
+      if (req.user.roles.includes(USER_ROLE.VENDOR)) {
+        if (store.owner.toString() !== req.user._id.toString())
+          return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (
+        [USER_ROLE.STORE_MANAGER, USER_ROLE.CHEF].some(r =>
+          req.user.roles.includes(r)
+        )
+      ) {
+        if (req.staffRoleStoreId.toString() !== store._id.toString())
+          return res.status(403).json({ message: "Access denied" });
+      }
+    }
+
+    // 🔹 Duplicate name check
     if (value.name && value.name !== product.name) {
-      const duplicate = await Product.findOne({ store: product.store, name: value.name });
-      if (duplicate) return res.status(400).json({ message: "Product with same name already exists in this store" });
+      const duplicate = await Product.findOne({
+        store: product.store,
+        name: value.name,
+        _id: { $ne: productId },
+      });
+
+      if (duplicate) {
+        return res.status(400).json({
+          message: "Product with same name already exists in this store",
+        });
+      }
     }
 
-    // Images append if uploaded
-    if (req.files && req.files.length > 0) {
-      value.images = [...(product.images || []), ...req.files.map(f => `/uploads/products/${f.filename}`)];
+    // 🔥 Cloudinary Upload Helper
+    const uploadToCloudinary = (file, folder) => {
+      return new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          { folder },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          }
+        );
+        stream.end(file.buffer);
+      });
+    };
+
+    // ==============================
+    // 🗑 DELETE SELECTED IMAGES ONLY
+    // ==============================
+
+    if (deletedImageIds.length > 0) {
+      await Promise.all(
+        deletedImageIds.map(id =>
+          cloudinary.uploader.destroy(id)
+        )
+      );
+
+      product.images = product.images.filter(
+        img => !deletedImageIds.includes(img.public_id)
+      );
     }
 
+    if (deletedThumbnailIds.length > 0) {
+      await Promise.all(
+        deletedThumbnailIds.map(id =>
+          cloudinary.uploader.destroy(id)
+        )
+      );
+
+      product.thumbnails = product.thumbnails.filter(
+        img => !deletedThumbnailIds.includes(img.public_id)
+      );
+    }
+
+    // ==============================
+    // 📤 ADD NEW IMAGES (KEEP OLD)
+    // ==============================
+
+    if (req.files?.images) {
+      for (const file of req.files.images) {
+        const result = await uploadToCloudinary(file, "products");
+
+        product.images.push({
+          url: result.secure_url,
+          public_id: result.public_id,
+        });
+      }
+    }
+
+    if (req.files?.thumbnails) {
+      for (const file of req.files.thumbnails) {
+        const result = await uploadToCloudinary(file, "thumbnails");
+
+        product.thumbnails.push({
+          url: result.secure_url,
+          public_id: result.public_id,
+        });
+      }
+    }
+
+    // ==============================
+    // 🔄 UPDATE OTHER FIELDS
+    // ==============================
+if (
+  !value.subCategory ||
+  value.subCategory === "" ||
+  value.subCategory === "null"
+) {
+  value.subCategory = null;
+}
+
+if (
+  !value.category ||
+  value.category === "" ||
+  value.category === "null"
+) {
+  value.category = null;
+}
     Object.assign(product, value);
+
     await product.save();
 
-    res.json({ success: true, product });
+    res.json({
+      success: true,
+      message: "Product updated successfully",
+      product,
+    });
+
   } catch (err) {
     console.error("updateProduct:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
 
+// ------------------- DELETE PRODUCT -------------------
+export const deleteProduct = async (req, res) => {
+  try {
+    const { productId } = req.params;
+
+    const product = await Product.findById(productId);
+    if (!product)
+      return res.status(404).json({ message: "Product not found" });
+
+    // 🔐 ROLE VALIDATION
+    if (!req.user.roles.includes(USER_ROLE.SUPER_ADMIN)) {
+
+      const store = await Store.findById(product.store);
+
+      if (req.user.roles.includes(USER_ROLE.VENDOR)) {
+        if (store.owner.toString() !== req.user._id.toString())
+          return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (
+        [USER_ROLE.STORE_MANAGER, USER_ROLE.CHEF].some(r =>
+          req.user.roles.includes(r)
+        )
+      ) {
+        if (req.staffRoleStoreId.toString() !== store._id.toString())
+          return res.status(403).json({ message: "Access denied" });
+      }
+    }
+
+    // 🔥 Delete images from Cloudinary
+    await Promise.all([
+      ...product.images.map(img =>
+        cloudinary.uploader.destroy(img.public_id)
+      ),
+      ...product.thumbnails.map(img =>
+        cloudinary.uploader.destroy(img.public_id)
+      )
+    ]);
+
+    await product.deleteOne();
+
+    res.json({
+      success: true,
+      message: "Product deleted successfully"
+    });
+
+  } catch (err) {
+    console.error("deleteProduct:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 // 🔹 GET PRODUCT BY ID
 export const getProductById = async (req, res) => {
   try {
@@ -233,17 +541,17 @@ export const getAllProducts = async (req, res) => {
 
 
 // 🔹 DELETE PRODUCT
-export const deleteProduct = async (req, res) => {
-  try {
-    const { productId } = req.params;
-    const product = await Product.findById(productId);
-    if (!product) return res.status(404).json({ message: "Product not found" });
+// export const deleteProduct = async (req, res) => {
+//   try {
+//     const { productId } = req.params;
+//     const product = await Product.findById(productId);
+//     if (!product) return res.status(404).json({ message: "Product not found" });
 
 
-    await product.deleteOne();
-    res.json({ success: true, message: "Product deleted successfully" });
-  } catch (err) {
-    console.error("deleteProduct:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-};
+//     await product.deleteOne();
+//     res.json({ success: true, message: "Product deleted successfully" });
+//   } catch (err) {
+//     console.error("deleteProduct:", err);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
