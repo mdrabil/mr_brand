@@ -99,3 +99,43 @@ export const getContact = async(req,res)=>{
 
   }
 }
+
+
+
+
+
+// Optional: specify projection to return only needed fields
+const CONTACT_FIELDS = {
+  title: 1,
+  subtitle: 1,
+  image: 1,
+  contactInfo: 1,
+  whatsapp: 1,
+  address: 1,
+  personalMail: 1
+};
+
+export const getContactPublic = async (req, res) => {
+  try {
+    // Fetch only the first (or main) contact
+    const data = await Contact.findOne({}, CONTACT_FIELDS).lean().exec();
+
+    if (!data) {
+      return res.status(404).json({
+        success: false,
+        message: "Contact info not found"
+      });
+    }
+
+    return res.json({
+      success: true,
+      data
+    });
+  } catch (err) {
+    console.error("GetContact Error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch contact info"
+    });
+  }
+};

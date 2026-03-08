@@ -390,3 +390,27 @@ export const getHome = async (req, res) => {
   if (!home) return res.status(404).json({ success: false, message: "Home page not found" });
   res.status(200).json({ success: true, message: "Home page fetched successfully", data: home });
 };
+
+
+// GET Home Data (Only status:true items)
+export const getHomeData = async (req, res) => {
+  try {
+    const homeData = await Home.findOne({}).lean();
+
+    if (!homeData) return res.status(404).json({ message: "Home data not found" });
+
+    // Filter only active items
+    homeData.heroCarousel = homeData.heroCarousel?.filter(item => item.status);
+    homeData.heroFeatures = homeData.heroFeatures?.filter(item => item.status);
+    homeData.heroProducts = homeData.heroProducts?.filter(item => item.status);
+    homeData.promoBanner.smallBanners = homeData.promoBanner?.smallBanners?.filter(item => item.status);
+    if (homeData.promoBanner?.bigBanner?.status === false) homeData.promoBanner.bigBanner = null;
+    if (homeData.countdown?.status === false) homeData.countdown = null;
+    if (homeData.newsletter?.status === false) homeData.newsletter = null;
+
+   res.status(200).json({ success: true, message: "Home page fetched successfully", data: homeData });
+  } catch (error) {
+    console.error("Error fetching Home data:", error);
+    return res.status(500).json({ message: error.message });
+  }
+};

@@ -26,7 +26,7 @@ router.put("/update-job/:id/status", updateJob);
 router.get("/delete-job/:id/delete", deleteJob);
 // router.delete("/applications/:id", deleteApplication);
 
-router.post("/apply", uploadResume.single("resume"), applyJob);
+router.post("/apply-job", uploadResume.single("resume"), applyJob);
 router.get("/job-applications", getApplications);
 router.patch("/job-applications/:id/status", updateApplicationStatus);
 router.get("/job-applications/:id", getSingleApplication);

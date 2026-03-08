@@ -72,8 +72,9 @@ export const getFaqPage = async (req, res) => {
       });
     }
 
-    res.json({
-      faqPage,
+    res.status(200).json({
+      success:true,
+     data:faqPage,
     });
 
   } catch (error) {

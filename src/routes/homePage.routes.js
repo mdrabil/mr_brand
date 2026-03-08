@@ -6,6 +6,7 @@ import {
   updateSection,
   deleteSectionImage,
   createOrUpdateHome,
+  getHomeData,
 } from "../controllers/homePage.controller.js";
 import { upload } from "../middlewares/upload.middleware.js";
 import { createHome } from "../controllers/home.contoller.js";
@@ -16,6 +17,8 @@ const router = express.Router();
 
 // GET Home
 router.get("/get", getHome);
+
+router.get("/website", getHomeData);
 
 // CREATE Home (first doc → then upload images)
 // router.post(
