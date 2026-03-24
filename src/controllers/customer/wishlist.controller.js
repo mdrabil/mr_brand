@@ -273,44 +273,55 @@ export const addToWishlist = async (req, res) => {
 };
 
 
-// ==========================
-// 🔹 REMOVE FROM WISHLIST
-// ==========================
+
+
 export const removeFromWishlist = async (req, res) => {
   try {
     const customerId = req.user._id;
     const { productId, variantId } = req.body;
 
     if (!productId) {
-      return res.status(400).json({
-        success: false,
-        message: "ProductId is required",
-      });
+      return res.status(400).json({ success: false, message: "ProductId is required" });
     }
 
-    const wishlist = await Wishlist.findOne({ customerId });
+    const wishlist = await Wishlist.findOne({ customerId }).populate({
+      path: "items.productId",
+      select: "name images sellingPrice mrp gstPercent variants stock",
+    });
 
-    if (!wishlist) {
-      return res.status(404).json({
-        success: false,
-        message: "Wishlist not found",
-      });
-    }
+    if (!wishlist) return res.status(404).json({ success: false, message: "Wishlist not found" });
 
     wishlist.items = wishlist.items.filter(
       (item) =>
-        !(
-          item.productId.toString() === productId &&
-          item.variantId?.toString() === variantId
-        )
+        !(item.productId._id.toString() === productId && item.variantId?.toString() === variantId)
     );
 
     await wishlist.save();
 
+    // Map full details to return
+    const itemsWithDetails = wishlist.items.map((item) => {
+      const product = item.productId;
+      const variant = product.variants?.find((v) => v._id.toString() === item.variantId?.toString());
+      return {
+        productId: product._id,
+        variantId: variant?._id,
+        name: product.name,
+        // images: product.images,
+         images:product.images?.map((img) => img.url) || [],
+        sellingPrice: variant?.sellingPrice || product.sellingPrice,
+        mrp: variant?.mrp || product.mrp,
+        stock: variant?.stock || product.stock,
+        gstPercent: product.gstPercent || 0,
+        variantLabel: variant?.label || "",
+        variantValue: variant?.value || "",
+        quantity: 1,
+      };
+    });
+
     return res.status(200).json({
       success: true,
       message: "Removed from wishlist",
-      items: wishlist.items,
+      items: itemsWithDetails,
     });
   } catch (error) {
     return res.status(500).json({
@@ -320,6 +331,53 @@ export const removeFromWishlist = async (req, res) => {
     });
   }
 };
+// ==========================
+// 🔹 REMOVE FROM WISHLIST
+// ==========================
+// export const removeFromWishlist = async (req, res) => {
+//   try {
+//     const customerId = req.user._id;
+//     const { productId, variantId } = req.body;
+
+//     if (!productId) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "ProductId is required",
+//       });
+//     }
+
+//     const wishlist = await Wishlist.findOne({ customerId });
+
+//     if (!wishlist) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Wishlist not found",
+//       });
+//     }
+
+//     wishlist.items = wishlist.items.filter(
+//       (item) =>
+//         !(
+//           item.productId.toString() === productId &&
+//           item.variantId?.toString() === variantId
+//         )
+//     );
+
+//     await wishlist.save();
+
+//     return res.status(200).json({
+//       success: true,
+//       message: "Removed from wishlist",
+//       items: wishlist.items,
+//     });
+//   } catch (error) {
+//     return res.status(500).json({
+//       success: false,
+//       message: "Failed to remove from wishlist",
+//       error: error.message,
+//     });
+//   }
+// };
 
 
 

@@ -1,6 +1,6 @@
 import express from "express";
 import { customerAuth } from "../../middlewares/customerAuth.middleware.js";
-import { getMyOrdersController, placeOrderController, updateMyOrderStatusController } from "../../controllers/customer/customer.order.controller.js";
+import { getMyOrdersController, getSingleOrderController, placeOrderController, updateMyOrderStatusController } from "../../controllers/customer/customer.order.controller.js";
 
 
 const router = express.Router();
@@ -9,7 +9,7 @@ const router = express.Router();
 router.post("/place", customerAuth, placeOrderController);
 router.get("/get-all", customerAuth, getMyOrdersController);
 router.patch("/update/:orderId", customerAuth, updateMyOrderStatusController);
-
+router.get("/:id", customerAuth, getSingleOrderController);
 // // Customer gets all orders
 // router.get("/", authMiddleware, getOrders);
 

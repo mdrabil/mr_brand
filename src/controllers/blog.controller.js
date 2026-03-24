@@ -14,13 +14,21 @@ export const createBlog = asyncHandler(async (req, res) => {
   const author = await UserModel.findById(userId);
   if (!author) return res.status(400).json({ success: false, message: "Author not found" });
 
-  const { title, description, categories, tags, seoTitle, seoDescription, status } = req.body;
+  const { title, description, categories, tags, seoTitle, seoDescription, status,slug } = req.body;
 
-  console.log("get data from frontend",req.body)
+  let finalSlug = slug;
+  if (!finalSlug) {
+    finalSlug = title
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, "") // remove special chars
+      .replace(/\s+/g, "-");    // replace space with -
+  }
 
   if (!title || !description || !categories?.length || !tags?.length || !req.files?.image || !req.files?.thumbnail) {
     return res.status(400).json({ success: false, message: "All fields including images are required" });
   }
+
 
   // Upload images
   const imgRes = await cloudinary.uploader.upload(req.files.image[0].path, { folder: "blogs" });
@@ -39,6 +47,7 @@ const parsedTags = Array.isArray(tags)
 const blog = await Blog.create({
   title,
   rmBlogId,
+    slug: finalSlug,
   description,
   categories: parsedCategories, // <-- store as array
   author: userId,
@@ -58,7 +67,7 @@ export const updateBlog = asyncHandler(async (req, res) => {
   const blog = await Blog.findById(req.params.id);
   if (!blog) return res.status(404).json({ success: false, message: "Blog not found" });
 
-  const { title, description, categories, tags, seoTitle, seoDescription, status } = req.body;
+  const { title, description, categories, tags, seoTitle, seoDescription, status,slug } = req.body;
 
   // Replace images if uploaded
   if (req.files?.image) {
@@ -73,6 +82,7 @@ export const updateBlog = asyncHandler(async (req, res) => {
   }
 
   blog.title = title || blog.title;
+  blog.slug = slug || blog.slug;
   blog.description = description || blog.description;
 blog.categories = categories?.length
   ? Array.isArray(categories) ? categories : JSON.parse(categories)
@@ -248,8 +258,12 @@ export const getBlogById = asyncHandler(async (req, res) => {
 
 
 export const getBlogBySlug = asyncHandler(async (req, res) => {
+ console.log("get data",req.params) 
+
   const blog = await Blog.findOne({ slug: req.params.slug })
-    .populate("author", "name email")
+
+
+    .populate("author", "fullName email")
     .lean();
 
   if (!blog) {

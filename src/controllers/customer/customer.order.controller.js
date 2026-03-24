@@ -20,8 +20,7 @@ export const placeOrderController = async (req, res) => {
 
   try {
     const customerId = req.user._id;
-    const { paymentMethod, deliveryAddress, notes, deliverySlot, couponCode } =
-      req.body;
+    const { paymentMethod, deliveryAddress, notes, deliverySlot, couponCode,deliveryDate } =req.body;
 
     const cart = await Cart.findOne({ customerId })
       .populate("items.productId")
@@ -187,6 +186,13 @@ export const placeOrderController = async (req, res) => {
           const rmOrderId = await generateRMId("ORD","ORDER")
     const transactionId = generateTransactionId() || null
 
+    if (!deliveryDate) {
+  const today = new Date();
+  const defaultDelivery = new Date();
+  defaultDelivery.setDate(today.getDate() + 7); // 7 days from today
+  deliveryDate = defaultDelivery;
+}
+
     // ================= CREATE ORDER =================
     const order = await Order.create(
       [
@@ -206,11 +212,13 @@ export const placeOrderController = async (req, res) => {
           notes,
           deliverySlot,
           deliveryAddress,
-          status: ORDER_STATUS.PLACED
+          status: ORDER_STATUS.PLACED,
+          deliveryDate
         }
       ],
       { session }
     );
+
 
     await Cart.updateOne(
       { customerId },
@@ -225,6 +233,7 @@ export const placeOrderController = async (req, res) => {
       success: true,
       message: "Order placed successfully",
       txnId:transactionId,
+      orderId:order[0]?._id,
       order: order[0]
     });
 
@@ -391,6 +400,43 @@ export const updateMyOrderStatusController = async (req, res) => {
   }
 };
 
+
+// ================= GET SINGLE ORDER =================
+export const getSingleOrderController = async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized"
+      });
+    }
+
+    const { id } = req.params;
+
+    const order = await Order.findOne({
+      _id: id,
+      customerId: req.user._id
+    }).lean();
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found"
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      order
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch order"
+    });
+  }
+};
 // export const getMyOrdersController = async (req, res) => {
 
 
