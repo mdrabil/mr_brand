@@ -103,45 +103,105 @@ export const createCategory = async (req, res) => {
     });
   }
 };
+
 // 🔹 Update Category
+// export const updateCategory = async (req, res) => {
+//   try {
+//     const { categoryId } = req.params;
+
+//     // Validate text fields only
+//     const { error, value } = updateCategorySchema.validate(req.body);
+//     if (error) return res.status(400).json({ message: error.details[0].message });
+
+//     const category = await Category.findById(categoryId);
+//     if (!category) return res.status(404).json({ message: "Category not found" });
+
+//     // Only SUPER_ADMIN or creator can update
+//     if (!req.user.roles.includes(USER_ROLE.SUPER_ADMIN) && category.createdBy.toString() !== req.user._id.toString()) {
+//       return res.status(403).json({ message: "Access denied" });
+//     }
+
+//     // Handle image update
+//     if (req.file) {
+//       if (category.image && category.image.public_id) {
+//         await cloudinary.uploader.destroy(category.image.public_id);
+//       }
+//       category.image = { url: req.file.path, public_id: req.file.filename };
+//     }
+
+//     // Assign other fields if provided
+//     if (Object.keys(value).length > 0) {
+//       Object.assign(category, value);
+//     }
+
+//     await category.save();
+
+//     res.json({ success: true, category });
+//   } catch (err) {
+//     console.error("updateCategory:", err);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
+
+
 export const updateCategory = async (req, res) => {
   try {
     const { categoryId } = req.params;
+    const { name, parentCategory: incomingParent, status } = req.body;
 
-    // Validate text fields only
-    const { error, value } = updateCategorySchema.validate(req.body);
-    if (error) return res.status(400).json({ message: error.details[0].message });
+    /* ===========================
+       ✅ FIX PARENT CATEGORY
+    ============================ */
+    let parentCategory = null;
 
-    const category = await Category.findById(categoryId);
-    if (!category) return res.status(404).json({ message: "Category not found" });
-
-    // Only SUPER_ADMIN or creator can update
-    if (!req.user.roles.includes(USER_ROLE.SUPER_ADMIN) && category.createdBy.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: "Access denied" });
+    if (incomingParent && incomingParent !== "null" && mongoose.Types.ObjectId.isValid(incomingParent)) {
+      parentCategory = incomingParent;
     }
 
-    // Handle image update
+    /* ===========================
+       ✅ CHECK DUPLICATE
+    ============================ */
+    const duplicate = await Category.findOne({
+      _id: { $ne: id },
+      name,
+      parentCategory
+    });
+
+    if (duplicate) {
+      return res.status(400).json({ message: "Category already exists under this parent" });
+    }
+
+    /* ===========================
+       ✅ HANDLE IMAGE
+    ============================ */
+    let updateData = { name, parentCategory, status };
+
     if (req.file) {
-      if (category.image && category.image.public_id) {
-        await cloudinary.uploader.destroy(category.image.public_id);
-      }
-      category.image = { url: req.file.path, public_id: req.file.filename };
+      updateData.image = {
+        url: req.file.path,
+        public_id: req.file.filename
+      };
     }
 
-    // Assign other fields if provided
-    if (Object.keys(value).length > 0) {
-      Object.assign(category, value);
+    /* ===========================
+       ✅ UPDATE CATEGORY
+    ============================ */
+    const updatedCategory = await Category.findByIdAndUpdate(id, updateData, {
+      new: true,
+      runValidators: true
+    });
+
+    if (!updatedCategory) {
+      return res.status(404).json({ message: "Category not found" });
     }
 
-    await category.save();
+    return res.status(200).json({ success: true, category: updatedCategory });
 
-    res.json({ success: true, category });
   } catch (err) {
     console.error("updateCategory:", err);
-    res.status(500).json({ message: "Server error" });
+    return res.status(500).json({ message: "Server error" });
   }
 };
-
 // 🔹 Get All Categories (with pagination + search + status filter)
 export const getAllCategories = async (req, res) => {
   try {

@@ -3,6 +3,7 @@ import Joi from "joi";
 import bcrypt from "bcryptjs";
 import { USER_ROLE } from "../constants/enums.js";
 import RoleModel from "../models/Role.model.js";
+import cloudinary from "../config/cloudinaryConfig.js";
 
 // 🔹 Joi validation schemas
 const createUserSchema = Joi.object({
@@ -151,6 +152,67 @@ export const getAllUsers = async (req, res) => {
   }
 };
 
+
+
+
+export const updateUserProfile = async (req, res) => {
+  try {
+    const userId = req.user._id; // authMiddleware should set req.user
+
+    console.log("get the userid",userId)
+    console.log("get the user",req.body)
+    const user = await User.findById(userId).select("+passwordHash +image");
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const { fullName, mobile, email, oldPassword, password } = req.body;
+
+    // ---------------- Update Basic Info ----------------
+    if (fullName) user.fullName = fullName;
+    if (mobile) user.mobile = mobile;
+    if (email) user.email = email;
+
+    // ---------------- Update Password ----------------
+    if (oldPassword && password) {
+      const isMatch = await bcrypt.compare(oldPassword, user.passwordHash);
+      if (!isMatch) return res.status(400).json({ message: "Old password is incorrect" });
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+      user.passwordHash = hashedPassword;
+    }
+
+    // ---------------- Update Profile Image ----------------
+    if (req.file) {
+      // delete old image from cloudinary if exists
+      if (user.dp && user.dp.public_id) {
+        await cloudinary.uploader.destroy(user.dp.public_id);
+      }
+
+      // upload new image
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "user_dp",
+        width: 300,
+        height: 300,
+        crop: "fill",
+      });
+
+      user.dp = {
+        url: result.secure_url,
+        public_id: result.public_id,
+      };
+    }
+
+    await user.save();
+
+    // return updated user (exclude passwordHash)
+    const { passwordHash, ...userData } = user.toObject();
+
+    res.json({ success: true, user: userData });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message || "Update failed" });
+  }
+};
 
 // 🔹 Get All Users (SUPER_ADMIN only) with pagination + search
 // export const getAllUsers = async (req, res) => {

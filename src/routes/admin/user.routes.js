@@ -7,11 +7,13 @@ import {
   updateUser,
   getUserById,
   getAllUsers,
-  deleteUser
+  deleteUser,
+  updateUserProfile
 } from "../../controllers/user.controller.js";
 
 import { checkPermission } from "../../middlewares/checkPermission.middleware.js";
 import { authMiddleware } from "../../middlewares/auth.middleware.js";
+import { singleDbUpload } from "../../middlewares/upload.middleware.js";
 
 const router = express.Router();
 
@@ -22,6 +24,14 @@ router.post(
   authMiddleware,
    checkPermission(MODULE_KEY.USER, "create"),
   createUser
+);
+
+
+router.put(
+  "/profile",
+  authMiddleware,
+    singleDbUpload("dp"),
+  updateUserProfile
 );
 
 // Update User → SUPER_ADMIN can update anyone, user can update self

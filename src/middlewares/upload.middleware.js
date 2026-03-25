@@ -29,6 +29,19 @@ export const singleImageUpload = (folder = "uploads") => {
   return multer({ storage }).single("image");
 };
 
+
+
+export const singleDbUpload = (folder = "uploads") => {
+  const storage = new CloudinaryStorage({
+    cloudinary,
+    params: {
+      folder,
+      allowed_formats: ["jpg","jpeg","png"],
+    },
+  });
+  return multer({ storage }).single("dp"); // ✅ field name must match frontend
+};
+
 // 🔹 Array of images upload (product images, banners, etc.)
 export const arrayImageUpload = (folder = "uploads", maxCount = 10) => {
   const storage = new CloudinaryStorage({

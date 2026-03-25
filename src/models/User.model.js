@@ -7,6 +7,10 @@ const userSchema = new mongoose.Schema(
     rmId: { type: String, unique: true, index: true },
     refreshToken: { type: String, select: false },
     fullName: { type: String, required: true },
+   dp: {
+  url: { type: String, default: null },
+  public_id: { type: String, default: null },
+},
     mobile: { type: String, required: true, unique: true, index: true },
     email: { type: String, lowercase: true },
     passwordHash: { type: String, required: true, select: false },

@@ -42,5 +42,5 @@ app.use(errorHandler);
 initSocket(server);
 
 server.listen(config.port, () => {
-  console.log(`🚀 Server + Socket running on port ${config.port}`);
+  console.log(`Server + Socket running on port ${config.port}`);
 });
