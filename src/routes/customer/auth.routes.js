@@ -1,7 +1,8 @@
 import express from "express";
 
-import { addAddress, changeCustomerPassword, createCustomer, customerLogin, customerLogout, deleteAddress, setDefaultAddress, updateAddress, updateCustomerProfile } from "../../controllers/customer.controller.js";
+import { addAddress, changeCustomerPassword, createCustomer, customerLogin, customerLogout, deleteAddress, setDefaultAddress, updateAddress, updateCustomerDp, updateCustomerProfile } from "../../controllers/customer.controller.js";
 import { customerAuth } from "../../middlewares/customerAuth.middleware.js";
+import { singleDbUpload } from "../../middlewares/upload.middleware.js";
 
 const router = express.Router();
 
@@ -11,6 +12,12 @@ router.post("/login", customerLogin);
 router.post("/logout", customerLogout);
 router.put("/update-profile", customerAuth, updateCustomerProfile);
 router.put("/change-password", customerAuth, changeCustomerPassword);
+router.put(
+  "/change-user-dp",
+  customerAuth,
+    singleDbUpload("dp"),
+  updateCustomerDp
+);
 router.post("/add/address", customerAuth, addAddress);
 router.put("/update/address/:addressId", customerAuth, updateAddress);
 router.delete("/delete/address/:addressId", customerAuth, deleteAddress);

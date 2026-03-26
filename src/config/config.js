@@ -11,7 +11,7 @@ export const config = {
   mongoURI: process.env.MONGO_URI,
 jwtSecret: process.env.JWT_SECRET || "supersecretkey",
   jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || "refreshsupersecret",
-  jwtExpiresIn: "10h",        // 1 hour
+  jwtExpiresIn: "7d",        
   jwtRefreshExpiresIn: "7d", // 7 days
 
   bcryptSaltRounds: Number(process.env.BCRYPT_SALT) || 12,

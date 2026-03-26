@@ -4,6 +4,7 @@ const addressSchema = new mongoose.Schema(
   {
     fullAddress: String,
     addressLine: String,
+
     mobile: String,
     city: String,
     type:String,
@@ -34,6 +35,10 @@ logo:String,
     fullName: { type: String, required: true },
     email: { type: String, unique: true, sparse: true },
     mobile: { type: String, unique: true, required: true },
+           dp: {
+  url: { type: String, default: null },
+  public_id: { type: String, default: null },
+},
 
     // password: { type: String, required: true },
     password: { type: String, required: true, select: false },

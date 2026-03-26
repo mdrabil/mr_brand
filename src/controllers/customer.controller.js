@@ -14,6 +14,7 @@ import CouponModel from "../models/Coupon.model.js";
 import CouponUsageModel from "../models/CouponUsage.model.js";
 import OrderModel from "../models/Order.model.js";
 import UserModel from "../models/User.model.js";
+import cloudinary from "../config/cloudinaryConfig.js";
 
 // ✅ Validation Schemas
 const addressSchema = Joi.object({
@@ -868,6 +869,54 @@ export const updateAddress = async (req, res) => {
       success: false,
       message: error.message,
     });
+  }
+};
+
+
+
+export const updateCustomerDp = async (req, res) => {
+  try {
+    const userId = req.user._id; // authMiddleware should set req.user
+
+
+    const user = await Customer.findById(userId).select("+password");
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+
+
+ 
+
+    // ---------------- Update Profile Image ----------------
+    if (req.file) {
+      // delete old image from cloudinary if exists
+      if (user.dp && user.dp.public_id) {
+        await cloudinary.uploader.destroy(user.dp.public_id);
+      }
+
+      // upload new image
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "user_dp",
+        width: 300,
+        height: 300,
+        crop: "fill",
+      });
+
+      user.dp = {
+        url: result.secure_url,
+        public_id: result.public_id,
+      };
+    }
+
+    await user.save();
+
+    // return updated user (exclude passwordHash)
+    const { password, ...userData } = user.toObject();
+
+    res.json({ success: true, user: userData });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message || "Update failed" });
   }
 };
 
