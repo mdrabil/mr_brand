@@ -4,7 +4,7 @@ import express from "express";
 
 import { MODULE_KEY, } from "../../constants/enums.js";
 import { checkPermission } from "../../middlewares/checkPermission.middleware.js";
-import { createStoreStaff, deleteStoreStaff, getAllStoreStaff, updateStoreStaff } from "../../controllers/storeStaff.controller.js";
+import { createStoreStaff, deleteStoreStaff, getAllStoreStaff, updateStoreStaff, updateStoreStaffIsAcitveInActive } from "../../controllers/storeStaff.controller.js";
 import { authMiddleware } from "../../middlewares/auth.middleware.js";
 
 const router = express.Router();
@@ -14,6 +14,7 @@ router.use(authMiddleware);
 router.post("/", checkPermission(MODULE_KEY.STORE_STAFF, "create"), createStoreStaff);
 router.put("/:id", checkPermission(MODULE_KEY.STORE_STAFF, "update"), updateStoreStaff);
 router.get("/", checkPermission(MODULE_KEY.STORE_STAFF, "read"), getAllStoreStaff);
-router.delete("/:staffId",checkPermission(MODULE_KEY.STORE_STAFF, "delete"), deleteStoreStaff);
+router.delete("/:id",checkPermission(MODULE_KEY.STORE_STAFF, "delete"), deleteStoreStaff);
+router.put("/:id/status-update",checkPermission(MODULE_KEY.STORE_STAFF, "delete"), updateStoreStaffIsAcitveInActive);
 
 export default router;

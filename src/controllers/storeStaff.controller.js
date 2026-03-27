@@ -7,6 +7,7 @@ import bcrypt from "bcryptjs";
 import { createStaffSchema } from "../validations/storeStaff.validation.js";
 import UserModel from "../models/User.model.js";
 import { sendEmail } from "../constants/mailer.js";
+import StoreStaffModel from "../models/StoreStaff.model.js";
 
 /* ================= CREATE STAFF ================= */
 // export const createStoreStaff = async (req, res) => {
@@ -149,7 +150,7 @@ export const createStoreStaff = async (req, res) => {
       if (user.email) {
         await sendEmail(
           user.email,
-          "Your Account Created 🎉",
+          "Your Account Created ",
           `Hello ${user.fullName},
 
 Your account has been created successfully.
@@ -195,16 +196,21 @@ Thanks`
       staff: staff[0],
     });
 
-  } catch (err) {
+  } catch (error) {
     await session.abortTransaction();
     session.endSession();
 
-    if (err.code === 11000) {
-      return res.status(400).json({ success: false, message: "Duplicate entry" });
-    }
+      if (error.code === 11000) {
+    return res.status(400).json({
+      success: false,
+      message: "User already exists in this store"
+    });
+  }
 
-    console.error("CREATE STAFF ERROR:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+  return res.status(500).json({
+    success: false,
+    message: error.message
+  });
   }
 };
 /* ================= GET ALL STAFF ================= */
@@ -274,21 +280,67 @@ console.log("get the id ",id)
   }
 };
 
+
+export const updateStoreStaffIsAcitveInActive = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // 🔥 pehle staff find karo
+    const staff = await StoreStaffModel.findById(id);
+
+    if (!staff) {
+      return res.status(404).json({
+        success: false,
+        message: "Staff not found",
+      });
+    }
+
+    // 🔥 toggle karo
+    staff.isActive = !staff.isActive;
+
+    await staff.save();
+
+    return res.json({
+      success: true,
+      message: `Staff ${staff.isActive ? "Activated" : "Deactivated"}`,
+      data: staff,
+    });
+
+  } catch (err) {
+    console.error("UPDATE STAFF STATUS ERROR:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
 /* ================= DELETE STAFF (SOFT DELETE) ================= */
 export const deleteStoreStaff = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const staff = await StoreStaff.findById(id);
-    if (!staff)
-      return res.status(404).json({ success: false, message: "Staff not found" });
+    const staff = await StoreStaffModel.findByIdAndDelete(id);
 
-    staff.isActive = false;
-    await staff.save();
+    if (!staff) {
+      return res.status(404).json({
+        success: false,
+        message: "Staff not found",
+      });
+    }
 
-    return res.json({ success: true, message: "Staff deactivated" });
+    return res.json({
+      success: true,
+      message: "Staff deleted permanently",
+    });
   } catch (err) {
     console.error("DELETE STAFF ERROR:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
+
+
+
