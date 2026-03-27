@@ -290,6 +290,7 @@ export const loginUser = async (req, res) => {
         fullName: user.fullName,
         image: user.image,
         mobile: user.mobile,
+        dp:user.dp?.url,
         email: user.email,
         roles: roleNames,
         isSuperAdmin,
