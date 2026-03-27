@@ -24,6 +24,50 @@ export const getProductById = async (req, res) => {
 
 
 
+// export const getAllCategorys = async (req, res) => {
+//   try {
+//     const { page = 1, limit = 20, name, search } = req.query;
+
+//     const pageNum = Number(page);
+//     const limitNum = Number(limit);
+
+//     let filter = {};
+
+//     if (name) filter.name = { $regex: name, $options: "i" };
+
+//     if (search) {
+//       filter.$or = [{ name: { $regex: search, $options: "i" } }];
+//     }
+
+//     const total = await CategoryModel.countDocuments(filter);
+
+//  const categoryData = await CategoryModel.find(filter)
+//   .populate("parentCategory", "name")
+//   .skip((pageNum - 1) * limitNum)
+//   .limit(limitNum)
+//   .sort({ createdAt: -1 });
+
+// const category = categoryData.map((cat) => ({
+//   _id: cat._id,
+//   name: cat.name,
+//   status: cat.status,
+//   parentCategory: cat.parentCategory,
+//   image: cat.image?.url || null,   // ✅ only url
+//   createdAt: cat.createdAt,
+// }));
+
+//     res.status(200).json({
+//       total,
+//       success:true,
+//       page: pageNum,
+//       limit: limitNum,
+//       category,
+//     });
+//   } catch (err) {
+//     console.log(err);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
 export const getAllCategorys = async (req, res) => {
   try {
     const { page = 1, limit = 20, name, search } = req.query;
@@ -33,42 +77,48 @@ export const getAllCategorys = async (req, res) => {
 
     let filter = {};
 
-    if (name) filter.name = { $regex: name, $options: "i" };
-
-    if (search) {
-      filter.$or = [{ name: { $regex: search, $options: "i" } }];
+    // 🔍 search filters
+    if (name) {
+      filter.name = { $regex: name, $options: "i" };
     }
 
-    const total = await CategoryModel.countDocuments(filter);
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: "i" } }
+      ];
+    }
 
- const categoryData = await CategoryModel.find(filter)
-  .populate("parentCategory", "name")
-  .skip((pageNum - 1) * limitNum)
-  .limit(limitNum)
-  .sort({ createdAt: -1 });
+    // 🚀 FAST QUERY
+    const categoryData = await CategoryModel.find(filter)
+      .select("name status parentCategory image createdAt") // only needed fields
+      .populate("parentCategory", "name") // remove if not needed
+      .sort({ createdAt: -1 })
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum)
+      .lean(); // 🔥 MUST for speed
 
-const category = categoryData.map((cat) => ({
-  _id: cat._id,
-  name: cat.name,
-  status: cat.status,
-  parentCategory: cat.parentCategory,
-  image: cat.image?.url || null,   // ✅ only url
-  createdAt: cat.createdAt,
-}));
+    // 🎯 clean response
+    const category = categoryData.map((cat) => ({
+      _id: cat._id,
+      name: cat.name,
+      status: cat.status,
+      parentCategory: cat.parentCategory,
+      image: cat.image?.url || null,
+      createdAt: cat.createdAt,
+    }));
 
     res.status(200).json({
-      total,
-      success:true,
+      success: true,
       page: pageNum,
       limit: limitNum,
       category,
+      hasNextPage: category.length === limitNum, // 🔥 no countDocuments
     });
   } catch (err) {
     console.log(err);
     res.status(500).json({ message: "Server error" });
   }
 };
-
 
 // export const getAllProducts = async (req, res) => {
 //   try {
@@ -153,7 +203,6 @@ const category = categoryData.map((cat) => ({
 
 
 
-
 export const getAllProducts = async (req, res) => {
   try {
     const {
@@ -169,26 +218,29 @@ export const getAllProducts = async (req, res) => {
     const pageNumber = Number(page);
     const limitNumber = Number(limit);
 
-    console.log("get the data from query", req.query);
-
     let filter = {};
 
-    // ================= Optional filters =================
+    // ================= FILTERS =================
     if (store) {
       filter.store = new mongoose.Types.ObjectId(store);
     }
 
-    if (status) filter.status = status;
+    if (status) {
+      filter.status = status;
+    }
 
     if (name) {
       filter.name = { $regex: name, $options: "i" };
     }
 
-    // ================= Category Filter (NAME → ObjectId) =================
+    // ================= CATEGORY (OPTIMIZED 🔥) =================
     if (category) {
-      const foundCategory = await CategoryModel.findOne({
-        name: { $regex: `^${category}$`, $options: "i" }
-      }).select("_id");
+      const foundCategory = await CategoryModel
+        .findOne({
+          name: { $regex: `^${category}$`, $options: "i" }
+        })
+        .select("_id")
+        .lean(); // ✅ IMPORTANT
 
       if (foundCategory) {
         filter.category = foundCategory._id;
@@ -205,7 +257,7 @@ export const getAllProducts = async (req, res) => {
       }
     }
 
-    // ================= Search across name & description =================
+    // ================= SEARCH (SAME LOGIC BUT LIGHT) =================
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: "i" } },
@@ -213,17 +265,67 @@ export const getAllProducts = async (req, res) => {
       ];
     }
 
-    // ================= Total count =================
-    const total = await ProductModel.countDocuments(filter);
+    // ================= PARALLEL EXECUTION 🚀 =================
+    const [total, productData, categorySummary] = await Promise.all([
 
-    // ================= Products with pagination & populate =================
-    const productData = await ProductModel.find(filter)
-      .populate("category", "name")
-      .populate("subCategory", "name")
-      .skip((pageNumber - 1) * limitNumber)
-      .limit(limitNumber)
-      .sort({ createdAt: -1 });
+      // ✅ COUNT
+      ProductModel.countDocuments(filter),
 
+      // ✅ PRODUCTS (OPTIMIZED)
+      ProductModel.find(filter)
+        .select(`
+          _id rmProductId name description category subCategory 
+          variants gstPercent status images thumbnails createdAt label
+        `)
+        .populate("category", "name")
+        .populate("subCategory", "name")
+        .lean() // 🔥 BIG PERFORMANCE BOOST
+        .sort({ createdAt: -1 })
+        .skip((pageNumber - 1) * limitNumber)
+        .limit(limitNumber),
+
+      // ================= CATEGORY SUMMARY (OPTIMIZED 🚀) =================
+      (() => {
+        const summaryFilter = { ...filter };
+        delete summaryFilter.category;
+
+        return ProductModel.aggregate([
+          { $match: summaryFilter },
+
+          {
+            $group: {
+              _id: "$category",
+              count: { $sum: 1 }
+            }
+          },
+
+          {
+            $lookup: {
+              from: "categories",
+              localField: "_id",
+              foreignField: "_id",
+              pipeline: [
+                { $match: { isActive: true } },
+                { $project: { name: 1 } }
+              ],
+              as: "categoryInfo"
+            }
+          },
+
+          { $unwind: "$categoryInfo" },
+
+          {
+            $project: {
+              _id: 0,
+              category: "$categoryInfo.name",
+              count: 1
+            }
+          }
+        ]);
+      })()
+    ]);
+
+    // ================= SAME MAPPING (NO CHANGE ✅) =================
     const products = productData.map((p) => ({
       _id: p._id,
       rmProductId: p.rmProductId,
@@ -240,47 +342,7 @@ export const getAllProducts = async (req, res) => {
       createdAt: p.createdAt,
     }));
 
-    // ================= Category Summary =================
- // ================= Category Summary =================
-
-// remove category filter for summary
-const summaryFilter = { ...filter };
-delete summaryFilter.category;
-
-const categorySummary = await ProductModel.aggregate([
-  { $match: summaryFilter },
-  {
-    $group: {
-      _id: "$category",
-      count: { $sum: 1 }
-    }
-  },
-  {
-    $lookup: {
-      from: "categories",
-      localField: "_id",
-      foreignField: "_id",
-      as: "categoryInfo"
-    }
-  },
-  {
-    $unwind: "$categoryInfo"
-  },
-  {
-    $match: {
-      "categoryInfo.isActive": true
-    }
-  },
-  {
-    $project: {
-      _id: 0,
-      category: "$categoryInfo.name",
-      count: 1
-    }
-  }
-]);
-
-    // ================= Response =================
+    // ================= RESPONSE =================
     res.status(200).json({
       success: true,
       message: "Products fetched successfully",
@@ -299,6 +361,151 @@ const categorySummary = await ProductModel.aggregate([
     });
   }
 };
+// export const getAllProducts = async (req, res) => {
+//   try {
+//     const {
+//       page = 1,
+//       limit = 20,
+//       store,
+//       category,
+//       status,
+//       name,
+//       search
+//     } = req.query;
+
+//     const pageNumber = Number(page);
+//     const limitNumber = Number(limit);
+
+//     console.log("get the data from query", req.query);
+
+//     let filter = {};
+
+//     // ================= Optional filters =================
+//     if (store) {
+//       filter.store = new mongoose.Types.ObjectId(store);
+//     }
+
+//     if (status) filter.status = status;
+
+//     if (name) {
+//       filter.name = { $regex: name, $options: "i" };
+//     }
+
+//     // ================= Category Filter (NAME → ObjectId) =================
+//     if (category) {
+//       const foundCategory = await CategoryModel.findOne({
+//         name: { $regex: `^${category}$`, $options: "i" }
+//       }).select("_id");
+
+//       if (foundCategory) {
+//         filter.category = foundCategory._id;
+//       } else {
+//         return res.status(200).json({
+//           success: true,
+//           message: "No products found",
+//           total: 0,
+//           page: pageNumber,
+//           limit: limitNumber,
+//           products: [],
+//           categorySummary: []
+//         });
+//       }
+//     }
+
+//     // ================= Search across name & description =================
+//     if (search) {
+//       filter.$or = [
+//         { name: { $regex: search, $options: "i" } },
+//         { description: { $regex: search, $options: "i" } },
+//       ];
+//     }
+
+//     // ================= Total count =================
+//     const total = await ProductModel.countDocuments(filter);
+
+//     // ================= Products with pagination & populate =================
+//     const productData = await ProductModel.find(filter)
+//       .populate("category", "name")
+//       .populate("subCategory", "name")
+//       .skip((pageNumber - 1) * limitNumber)
+//       .limit(limitNumber)
+//       .sort({ createdAt: -1 });
+
+//     const products = productData.map((p) => ({
+//       _id: p._id,
+//       rmProductId: p.rmProductId,
+//       name: p.name,
+//       description: p.description,
+//       category: p.category,
+//       label: p.label,
+//       subCategory: p.subCategory,
+//       variants: p.variants,
+//       gstPercent: p.gstPercent,
+//       status: p.status,
+//       images: p.images?.map((img) => img.url),
+//       thumbnails: p.thumbnails?.map((img) => img.url),
+//       createdAt: p.createdAt,
+//     }));
+
+//     // ================= Category Summary =================
+//  // ================= Category Summary =================
+
+// // remove category filter for summary
+// const summaryFilter = { ...filter };
+// delete summaryFilter.category;
+
+// const categorySummary = await ProductModel.aggregate([
+//   { $match: summaryFilter },
+//   {
+//     $group: {
+//       _id: "$category",
+//       count: { $sum: 1 }
+//     }
+//   },
+//   {
+//     $lookup: {
+//       from: "categories",
+//       localField: "_id",
+//       foreignField: "_id",
+//       as: "categoryInfo"
+//     }
+//   },
+//   {
+//     $unwind: "$categoryInfo"
+//   },
+//   {
+//     $match: {
+//       "categoryInfo.isActive": true
+//     }
+//   },
+//   {
+//     $project: {
+//       _id: 0,
+//       category: "$categoryInfo.name",
+//       count: 1
+//     }
+//   }
+// ]);
+
+//     // ================= Response =================
+//     res.status(200).json({
+//       success: true,
+//       message: "Products fetched successfully",
+//       total,
+//       page: pageNumber,
+//       limit: limitNumber,
+//       products,
+//       categorySummary,
+//     });
+
+//   } catch (err) {
+//     console.error("getAllProducts error:", err);
+//     res.status(500).json({
+//       success: false,
+//       message: "Server error. Please try again later."
+//     });
+//   }
+// };
 
 
 

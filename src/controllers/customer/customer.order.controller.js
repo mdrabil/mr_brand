@@ -6,6 +6,273 @@ import CouponUsage from "../../models/CouponUsage.model.js";
 import Product from "../../models/Product.model.js";
 import { ORDER_STATUS } from "../../constants/enums.js";
 import { generateRMId, generateTransactionId } from "../../utils/rmId.js";
+import Customer from "../../models/Customer.js";
+
+// export const placeOrderController = async (req, res) => {
+//   if (!req.user) {
+//     return res.status(401).json({
+//       success: false,
+//       message: "Unauthorized. Please login first."
+//     });
+//   }
+
+//   const session = await mongoose.startSession();
+//   session.startTransaction();
+
+//   try {
+//     const customerId = req.user._id;
+//     const { paymentMethod, deliveryAddress, notes, deliverySlot, couponCode,deliveryDate } =req.body;
+
+//     const cart = await Cart.findOne({ customerId })
+//       .populate("items.productId")
+//       .session(session);
+
+//     if (!cart || cart.items.length === 0) {
+//       throw new Error("Cart is empty");
+//     }
+
+//     let totalAmount = 0;
+//     let gstAmount = 0;
+//     let discountAmount = 0;
+//     let storeId = null;
+
+//     const orderItems = [];
+
+//     // ================= LOOP CART ITEMS =================
+//     for (const item of cart.items) {
+//       const product = item.productId;
+//       if (!product) throw new Error("Product not found");
+
+//       const variant = product.variants.id(item.variantId);
+//       if (!variant || !variant.isActive)
+//         throw new Error("Variant not available");
+
+//       const price = Number(variant.sellingPrice) || 0;
+//       const qty = Number(item.qty) || 0;
+//       const gstPercent = Number(product.gstPercent) || 0;
+
+//       if (price <= 0 || qty <= 0)
+//         throw new Error("Invalid price or quantity");
+
+//       if (variant.stockQty < qty)
+//         throw new Error(`${product.name} (${variant.value}) out of stock`);
+
+//       if (!storeId) storeId = product.store;
+
+//       const itemTotal = price * qty;
+//       const itemGST = (itemTotal * gstPercent) / 100;
+
+//       totalAmount += itemTotal;
+//       gstAmount += itemGST;
+
+//       orderItems.push({
+//         productName: product.name,
+//         variantLabel: variant.value,
+//         sellingPrice: price,
+//         qty,
+//         gstPercent
+//       });
+
+//       // 🔥 Atomic variant stock reduce
+//       const stockUpdate = await Product.updateOne(
+//         {
+//           _id: product._id,
+//           "variants._id": variant._id,
+//           "variants.stockQty": { $gte: qty }
+//         },
+//         {
+//           $inc: { "variants.$.stockQty": -qty }
+//         },
+//         { session }
+//       );
+
+//       if (stockUpdate.modifiedCount === 0) {
+//         throw new Error("Stock update failed");
+//       }
+//     }
+
+//     totalAmount = Number(totalAmount.toFixed(2));
+//     gstAmount = Number(gstAmount.toFixed(2));
+
+//     // ================= COUPON =================
+//     let appliedCoupon = null;
+
+//     if (couponCode) {
+//       const coupon = await Coupon.findOne({
+//         code: couponCode.toUpperCase(),
+//         status: "ACTIVE"
+//       }).session(session);
+
+//       if (!coupon) throw new Error("Invalid coupon");
+
+//       const now = new Date();
+
+//       if (now < coupon.startDate || now > coupon.endDate)
+//         throw new Error("Coupon expired");
+
+//       if (totalAmount < coupon.minOrderAmount)
+//         throw new Error("Minimum order amount not reached");
+
+//       const alreadyUsed = await CouponUsage.findOne({
+//         coupon: coupon._id,
+//         user: customerId
+//       }).session(session);
+
+//       if (alreadyUsed)
+//         throw new Error("You already used this coupon");
+
+//       if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit)
+//         throw new Error("Coupon usage limit reached");
+
+//       if (coupon.type === "PERCENTAGE") {
+//         discountAmount = (totalAmount * coupon.value) / 100;
+//         if (coupon.maxDiscountAmount) {
+//           discountAmount = Math.min(
+//             discountAmount,
+//             coupon.maxDiscountAmount
+//           );
+//         }
+//       } else {
+//         discountAmount = coupon.value;
+//       }
+
+//       discountAmount = Math.min(discountAmount, totalAmount);
+//       discountAmount = Number(discountAmount.toFixed(2));
+
+//       const updatedCoupon = await Coupon.findOneAndUpdate(
+//         {
+//           _id: coupon._id,
+//           $or: [
+//             { usageLimit: { $exists: false } },
+//             { usageLimit: null },
+//             { usedCount: { $lt: coupon.usageLimit } }
+//           ]
+//         },
+//         { $inc: { usedCount: 1 } },
+//         { new: true, session }
+//       );
+
+//       if (!updatedCoupon)
+//         throw new Error("Coupon usage limit reached");
+
+//       await CouponUsage.create(
+//         [
+//           {
+//             coupon: coupon._id,
+//             user: customerId
+//           }
+//         ],
+//         { session }
+//       );
+
+//       appliedCoupon = coupon.code;
+//     }
+
+//     const payableAmount = Number(
+//       (totalAmount + gstAmount - discountAmount).toFixed(2)
+//     );
+
+//     // Payment mapping
+//     const map = {
+//       cash: "COD",
+//       cod: "COD",
+//       online: "ONLINE",
+//       upi: "UPI",
+//       wallet: "WALLET"
+//     };
+
+//     const finalPaymentMethod =
+//       map[paymentMethod?.toLowerCase()] || "COD";
+
+//           const rmOrderId = await generateRMId("ORD","ORDER")
+//     const transactionId = generateTransactionId() || null
+
+//     if (!deliveryDate) {
+//   const today = new Date();
+//   const defaultDelivery = new Date();
+//   defaultDelivery.setDate(today.getDate() + 7); // 7 days from today
+//   deliveryDate = defaultDelivery;
+// }
+
+// // ================= DELIVERY ADDRESS =================
+// if (deliveryAddress) {
+//   // Check if this address already exists for the user
+//   const existingAddress = req.user.addresses.find(addr =>
+//     addr.fullAddress === deliveryAddress.fullAddress &&
+//     addr.addressLine === deliveryAddress.addressLine &&
+//     addr.mobile === deliveryAddress.mobile &&
+//     addr.city === deliveryAddress.city &&
+//     addr.state === deliveryAddress.state &&
+//     addr.pincode === deliveryAddress.pincode &&
+//     addr.type === deliveryAddress.type
+//   );
+
+//   if (!existingAddress) {
+//     // Add new address to customer
+//     await Customer.updateOne(
+//       { _id: customerId },
+//       { $push: { addresses: deliveryAddress } },
+//       { session }
+//     );
+//   }
+// }
+
+//     // ================= CREATE ORDER =================
+//     const order = await Order.create(
+//       [
+//         {
+//           customerId,
+//           store: storeId,
+//           rmOrderId,
+//           transactionId,
+
+//           items: orderItems,
+//           totalAmount,
+//           gstAmount,
+//           discountAmount,
+//           payableAmount,
+//           couponCode: appliedCoupon,
+//           paymentMethod: finalPaymentMethod,
+//           notes,
+//           deliverySlot,
+//           deliveryAddress,
+//           status: ORDER_STATUS.PLACED,
+//           deliveryDate
+//         }
+//       ],
+//       { session }
+//     );
+
+
+//     await Cart.updateOne(
+//       { customerId },
+//       { $set: { items: [] } },
+//       { session }
+//     );
+
+//     await session.commitTransaction();
+//     session.endSession();
+
+//     return res.status(201).json({
+//       success: true,
+//       message: "Order placed successfully",
+//       txnId:transactionId,
+//       orderId:order[0]?._id,
+//       order: order[0],
+//       user:cus
+//     });
+
+//   } catch (error) {
+//     await session.abortTransaction();
+//     session.endSession();
+
+//     return res.status(400).json({
+//       success: false,
+//       message: error.message || "Order failed"
+//     });
+//   }
+// };
+
 
 export const placeOrderController = async (req, res) => {
   if (!req.user) {
@@ -20,8 +287,9 @@ export const placeOrderController = async (req, res) => {
 
   try {
     const customerId = req.user._id;
-    const { paymentMethod, deliveryAddress, notes, deliverySlot, couponCode,deliveryDate } =req.body;
+    let { paymentMethod, deliveryAddress, notes, deliverySlot, couponCode, deliveryDate } = req.body;
 
+    // Fetch cart with product data
     const cart = await Cart.findOne({ customerId })
       .populate("items.productId")
       .session(session);
@@ -34,7 +302,6 @@ export const placeOrderController = async (req, res) => {
     let gstAmount = 0;
     let discountAmount = 0;
     let storeId = null;
-
     const orderItems = [];
 
     // ================= LOOP CART ITEMS =================
@@ -43,18 +310,14 @@ export const placeOrderController = async (req, res) => {
       if (!product) throw new Error("Product not found");
 
       const variant = product.variants.id(item.variantId);
-      if (!variant || !variant.isActive)
-        throw new Error("Variant not available");
+      if (!variant || !variant.isActive) throw new Error("Variant not available");
 
       const price = Number(variant.sellingPrice) || 0;
       const qty = Number(item.qty) || 0;
       const gstPercent = Number(product.gstPercent) || 0;
 
-      if (price <= 0 || qty <= 0)
-        throw new Error("Invalid price or quantity");
-
-      if (variant.stockQty < qty)
-        throw new Error(`${product.name} (${variant.value}) out of stock`);
+      if (price <= 0 || qty <= 0) throw new Error("Invalid price or quantity");
+      if (variant.stockQty < qty) throw new Error(`${product.name} (${variant.value}) out of stock`);
 
       if (!storeId) storeId = product.store;
 
@@ -79,15 +342,11 @@ export const placeOrderController = async (req, res) => {
           "variants._id": variant._id,
           "variants.stockQty": { $gte: qty }
         },
-        {
-          $inc: { "variants.$.stockQty": -qty }
-        },
+        { $inc: { "variants.$.stockQty": -qty } },
         { session }
       );
 
-      if (stockUpdate.modifiedCount === 0) {
-        throw new Error("Stock update failed");
-      }
+      if (stockUpdate.modifiedCount === 0) throw new Error("Stock update failed");
     }
 
     totalAmount = Number(totalAmount.toFixed(2));
@@ -105,32 +364,22 @@ export const placeOrderController = async (req, res) => {
       if (!coupon) throw new Error("Invalid coupon");
 
       const now = new Date();
+      if (now < coupon.startDate || now > coupon.endDate) throw new Error("Coupon expired");
 
-      if (now < coupon.startDate || now > coupon.endDate)
-        throw new Error("Coupon expired");
-
-      if (totalAmount < coupon.minOrderAmount)
-        throw new Error("Minimum order amount not reached");
+      if (totalAmount < coupon.minOrderAmount) throw new Error("Minimum order amount not reached");
 
       const alreadyUsed = await CouponUsage.findOne({
         coupon: coupon._id,
         user: customerId
       }).session(session);
 
-      if (alreadyUsed)
-        throw new Error("You already used this coupon");
+      if (alreadyUsed) throw new Error("You already used this coupon");
 
-      if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit)
-        throw new Error("Coupon usage limit reached");
+      if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) throw new Error("Coupon usage limit reached");
 
       if (coupon.type === "PERCENTAGE") {
         discountAmount = (totalAmount * coupon.value) / 100;
-        if (coupon.maxDiscountAmount) {
-          discountAmount = Math.min(
-            discountAmount,
-            coupon.maxDiscountAmount
-          );
-        }
+        if (coupon.maxDiscountAmount) discountAmount = Math.min(discountAmount, coupon.maxDiscountAmount);
       } else {
         discountAmount = coupon.value;
       }
@@ -151,47 +400,49 @@ export const placeOrderController = async (req, res) => {
         { new: true, session }
       );
 
-      if (!updatedCoupon)
-        throw new Error("Coupon usage limit reached");
+      if (!updatedCoupon) throw new Error("Coupon usage limit reached");
 
-      await CouponUsage.create(
-        [
-          {
-            coupon: coupon._id,
-            user: customerId
-          }
-        ],
-        { session }
-      );
-
+      await CouponUsage.create([{ coupon: coupon._id, user: customerId }], { session });
       appliedCoupon = coupon.code;
     }
 
-    const payableAmount = Number(
-      (totalAmount + gstAmount - discountAmount).toFixed(2)
-    );
+    const payableAmount = Number((totalAmount + gstAmount - discountAmount).toFixed(2));
 
     // Payment mapping
-    const map = {
-      cash: "COD",
-      cod: "COD",
-      online: "ONLINE",
-      upi: "UPI",
-      wallet: "WALLET"
-    };
+    const map = { cash: "COD", cod: "COD", online: "ONLINE", upi: "UPI", wallet: "WALLET" };
+    const finalPaymentMethod = map[paymentMethod?.toLowerCase()] || "COD";
 
-    const finalPaymentMethod =
-      map[paymentMethod?.toLowerCase()] || "COD";
+    const rmOrderId = await generateRMId("ORD", "ORDER");
+    const transactionId = generateTransactionId() || null;
 
-          const rmOrderId = await generateRMId("ORD","ORDER")
-    const transactionId = generateTransactionId() || null
-
+    // Default delivery date if not provided
     if (!deliveryDate) {
-  const today = new Date();
-  const defaultDelivery = new Date();
-  defaultDelivery.setDate(today.getDate() + 7); // 7 days from today
-  deliveryDate = defaultDelivery;
-}
+      const today = new Date();
+      const defaultDelivery = new Date();
+      defaultDelivery.setDate(today.getDate() + 7);
+      deliveryDate = defaultDelivery;
+    }
+
+    // ================= DELIVERY ADDRESS =================
+    if (deliveryAddress) {
+      const existingAddress = req.user.addresses.find(addr =>
+        addr.fullAddress === deliveryAddress.fullAddress &&
+        addr.addressLine === deliveryAddress.addressLine &&
+        addr.mobile === deliveryAddress.mobile &&
+        addr.city === deliveryAddress.city &&
+        addr.state === deliveryAddress.state &&
+        addr.pincode === deliveryAddress.pincode &&
+        addr.type === deliveryAddress.type
+      );
+
+      if (!existingAddress) {
+        await Customer.updateOne(
+          { _id: customerId },
+          { $push: { addresses: deliveryAddress } },
+          { session }
+        );
+      }
+    }
 
     // ================= CREATE ORDER =================
     const order = await Order.create(
@@ -201,7 +452,6 @@ export const placeOrderController = async (req, res) => {
           store: storeId,
           rmOrderId,
           transactionId,
-
           items: orderItems,
           totalAmount,
           gstAmount,
@@ -219,22 +469,23 @@ export const placeOrderController = async (req, res) => {
       { session }
     );
 
+    // Clear cart
+    await Cart.updateOne({ customerId }, { $set: { items: [] } }, { session });
 
-    await Cart.updateOne(
-      { customerId },
-      { $set: { items: [] } },
-      { session }
-    );
-
+    // Commit transaction
     await session.commitTransaction();
     session.endSession();
+
+    // Fetch updated user for frontend / Redux
+    const updatedUser = await Customer.findById(customerId).lean();
 
     return res.status(201).json({
       success: true,
       message: "Order placed successfully",
-      txnId:transactionId,
-      orderId:order[0]?._id,
-      order: order[0]
+      txnId: transactionId,
+      orderId: order[0]?._id,
+      order: order[0],
+      user: updatedUser
     });
 
   } catch (error) {

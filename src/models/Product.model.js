@@ -119,7 +119,11 @@ productSchema.pre("save", async function (next) {
   next();
 });
 // 🚀 fast queries
-productSchema.index({ store: 1, category: 1 });
-productSchema.index({ name: "text" });
+productSchema.index({ name: "text", description: "text" });
 
+productSchema.index({ category: 1, status: 1, createdAt: -1 });
+
+productSchema.index({ store: 1, status: 1, createdAt: -1 });
+
+productSchema.index({ createdAt: -1 });
 export default mongoose.model("Product", productSchema);
