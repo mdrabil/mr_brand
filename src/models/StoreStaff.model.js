@@ -21,14 +21,19 @@ const storeStaffSchema = new mongoose.Schema(
   
     },
 
-    
+
+ 
     role: {
       type: String,
       enum: [
         USER_ROLE.STORE_MANAGER,
         USER_ROLE.RIDER,
         USER_ROLE.CHEF,
-        USER_ROLE.STAFF
+        USER_ROLE.STAFF,
+        USER_ROLE.AUTHOR,
+        USER_ROLE.SUPPORT,
+        USER_ROLE.DELIVERY_MANAGER,
+        
       ],
       required: true
     },
