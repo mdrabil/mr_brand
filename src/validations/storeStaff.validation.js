@@ -22,7 +22,6 @@ export const createStaffSchema = Joi.object({
       fullName: Joi.string().min(3).required(),
       mobile: Joi.string().length(10).required(),
       email: Joi.string().email().optional(),
-      password: Joi.string().min(6).required()
     }).required(),
     otherwise: Joi.forbidden()
   })

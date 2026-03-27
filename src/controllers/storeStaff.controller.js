@@ -6,10 +6,96 @@ import Store from "../models/Store.model.js";
 import bcrypt from "bcryptjs";
 import { createStaffSchema } from "../validations/storeStaff.validation.js";
 import UserModel from "../models/User.model.js";
+import { sendEmail } from "../constants/mailer.js";
 
 /* ================= CREATE STAFF ================= */
+// export const createStoreStaff = async (req, res) => {
+//   const session = await mongoose.startSession();
+//   try {
+//     const { error } = createStaffSchema.validate(req.body);
+//     if (error)
+//       return res.status(400).json({ success: false, message: error.message });
+
+//     const { store, role, userOption, userId, newUser } = req.body;
+
+//     session.startTransaction();
+
+//     // Check store
+//     const storeExists = await Store.findById(store).session(session);
+//     if (!storeExists)
+//       return res.status(404).json({ success: false, message: "Store not found" });
+
+//     let user;
+
+//     // Create new user
+//     if (userOption === "new") {
+//       const existing = await UserModel.findOne({ mobile: newUser.mobile }).session(session);
+//       if (existing)
+//         return res.status(400).json({ success: false, message: "Mobile already registered" });
+
+//       const generatePassword = () => {
+//   const numbers = Math.floor(10000 + Math.random() * 90000); // 5 digit number
+//   return `RM${numbers}R`; // Example: RM20003R
+// };
+
+//       const hash = await bcrypt.hash(generatePassword, 10);
+
+//       user = await UserModel.create(
+//         [
+//           {
+//             fullName: newUser.fullName,
+//             mobile: newUser.mobile,
+//             email: newUser.email,
+//             passwordHash: hash
+//           }
+//         ],
+//         { session }
+//       );
+//       user = user[0];
+//     } else {
+//       user = await UserModel.findById(userId).session(session);
+//       if (!user)
+//         return res.status(404).json({ success: false, message: "User not found" });
+//     }
+
+//     // Unique store+user
+//     const already = await StoreStaff.findOne({ store, user: user._id }).session(session);
+//     if (already)
+//       return res.status(400).json({ success: false, message: "Staff already exists" });
+
+//     // Create staff
+//     const staff = await StoreStaff.create(
+//       [
+//         {
+//           store,
+//           user: user._id,
+//           role
+//         }
+//       ],
+//       { session }
+//     );
+
+//     await session.commitTransaction();
+//     session.endSession();
+
+//     return res.status(201).json({ success: true, message: "Staff created", staff: staff[0] });
+//   } catch (err) {
+//     await session.abortTransaction();
+//     session.endSession();
+
+//     if (err.code === 11000) {
+//       return res.status(400).json({ success: false, message: "Duplicate entry" });
+//     }
+
+//     console.error("CREATE STAFF ERROR:", err);
+//     return res.status(500).json({ success: false, message: "Server error" });
+//   }
+// };
+
+
 export const createStoreStaff = async (req, res) => {
   const session = await mongoose.startSession();
+
   try {
     const { error } = createStaffSchema.validate(req.body);
     if (error)
@@ -25,6 +111,13 @@ export const createStoreStaff = async (req, res) => {
       return res.status(404).json({ success: false, message: "Store not found" });
 
     let user;
+    let plainPassword = null; // 🔥 important
+
+    // Password Generator
+    const generatePassword = () => {
+      const numbers = Math.floor(10000 + Math.random() * 90000);
+      return `RM${numbers}R`; // RM20003R
+    };
 
     // Create new user
     if (userOption === "new") {
@@ -32,7 +125,11 @@ export const createStoreStaff = async (req, res) => {
       if (existing)
         return res.status(400).json({ success: false, message: "Mobile already registered" });
 
-      const hash = await bcrypt.hash(newUser.password, 10);
+      // ✅ Generate password
+      plainPassword = generatePassword();
+
+      // ✅ Hash password
+      const hash = await bcrypt.hash(plainPassword, 10);
 
       user = await UserModel.create(
         [
@@ -45,7 +142,27 @@ export const createStoreStaff = async (req, res) => {
         ],
         { session }
       );
+
       user = user[0];
+
+      // ✅ Send Email
+      if (user.email) {
+        await sendEmail(
+          user.email,
+          "Your Account Created 🎉",
+          `Hello ${user.fullName},
+
+Your account has been created successfully.
+
+Login Details:
+Username: ${user.email}
+Password: ${plainPassword}
+
+Please change your password after login.
+
+Thanks`
+        );
+      }
     } else {
       user = await UserModel.findById(userId).session(session);
       if (!user)
@@ -72,7 +189,12 @@ export const createStoreStaff = async (req, res) => {
     await session.commitTransaction();
     session.endSession();
 
-    return res.status(201).json({ success: true, message: "Staff created", staff: staff[0] });
+    return res.status(201).json({
+      success: true,
+      message: "Staff created",
+      staff: staff[0],
+    });
+
   } catch (err) {
     await session.abortTransaction();
     session.endSession();
@@ -85,7 +207,6 @@ export const createStoreStaff = async (req, res) => {
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
-
 /* ================= GET ALL STAFF ================= */
 export const getAllStoreStaff = async (req, res) => {
   try {
