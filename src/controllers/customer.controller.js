@@ -520,7 +520,9 @@ export const createCustomer = async (req, res) => {
 
     const tokens = generateToken({ id: customer._id, role: "CUSTOMER" });
 
-    return res.status(201).json({ success: true, message: "Customer created successfully", tokens, user: customer });
+    return res.status(201).json({ success: true, message: "Customer created successfully", tokens, user: customer,
+       items: formatCart(cart),
+     });
   } catch (err) {
     if (transactionStarted) {
       await session.abortTransaction();
