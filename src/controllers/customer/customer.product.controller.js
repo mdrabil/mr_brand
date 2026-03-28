@@ -651,6 +651,68 @@ export const applyCoupon = async (req, res) => {
   }
 };
 
+
+
+
+
+/**
+ * Check if coupon is active and valid
+ * Query params:
+ *  - couponCode (required)
+ * User is optional
+ */
+export const checkCouponActiveOrNot = async (req, res) => {
+  try {
+    const { couponCode } = req.query;
+    const userId = req.user?._id; // from optional auth middleware
+
+    if (!couponCode) {
+      return res.status(400).json({ success: false, message: "Coupon code is required" });
+    }
+
+    // Find active coupon within date range
+    const coupon = await CouponModel.findOne({
+      code: couponCode.toUpperCase(),
+      status: "ACTIVE",
+      startDate: { $lte: new Date() },
+      endDate: { $gte: new Date() },
+    });
+
+    if (!coupon) {
+      return res.status(404).json({ success: false, message: "Coupon not found or inactive" });
+    }
+
+    // If user is logged in, check if they already used the coupon
+    if (userId) {
+      const usage = await CouponUsageModel.findOne({ coupon: coupon._id, user: userId });
+      if (usage) {
+        return res.status(400).json({
+          success: false,
+          message: "You have already used this coupon",
+        });
+      }
+    }
+
+    // Success response
+    return res.json({
+      success: true,
+      message: "Coupon is valid",
+      coupon: {
+        code: coupon.code,
+        type: coupon.type,
+        value: coupon.value,
+        minOrderAmount: coupon.minOrderAmount,
+        maxDiscountAmount: coupon.maxDiscountAmount,
+        startDate: coupon.startDate,
+        endDate: coupon.endDate,
+      },
+    });
+  } catch (err) {
+    console.error("checkCouponActiveOrNot:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
 // export const getAllProducts = async (req, res) => {
 //   try {
 //  const {

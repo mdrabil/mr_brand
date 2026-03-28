@@ -52,3 +52,23 @@ export const customerAuth = async (req, res, next) => {
     });
   }
 };
+
+
+
+export const customerauthMiddlewareOptional = async (req, res, next) => {
+  const token = req.headers.authorization?.split(" ")[1];
+
+  if (!token) {
+    return next(); // no login, continue
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await Customer.findById(decoded.id);
+    if (user) req.user = user;
+  } catch (err) {
+    console.warn("Optional auth failed:", err.message);
+  }
+
+  next();
+};

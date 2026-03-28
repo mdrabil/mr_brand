@@ -84,3 +84,99 @@ export const deleteCoupon = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+
+
+// Apply coupon
+export const applyCoupon = async (req, res) => {
+  try {
+    const { couponCode } = req.query;
+
+    if (!couponCode) {
+      return res.status(400).json({ success: false, message: "Coupon code is required" });
+    }
+
+    const coupon = await Coupon.findOne({
+      code: couponCode.toUpperCase(),
+      status: "ACTIVE",
+      startDate: { $lte: new Date() },
+      endDate: { $gte: new Date() },
+    });
+
+    if (!coupon) {
+      return res.status(404).json({ success: false, message: "Coupon not found or inactive" });
+    }
+
+    res.json({
+      success: true,
+      message: `Coupon "${coupon.code}" applied successfully!`,
+      coupon: {
+        code: coupon.code,
+        type: coupon.type,
+        value: coupon.value,
+        minOrderAmount: coupon.minOrderAmount,
+        maxDiscountAmount: coupon.maxDiscountAmount,
+      },
+    });
+  } catch (err) {
+    console.error("applyCoupon:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// export const applyCoupon = async (req, res) => {
+//   try {
+//     const { couponCode, orderAmount } = req.query;
+
+//     if (!couponCode) {
+//       return res.status(400).json({ success: false, message: "Coupon code is required" });
+//     }
+
+//     const amount = Number(orderAmount) || 0;
+
+//     // Find coupon
+//     const coupon = await Coupon.findOne({
+//       code: couponCode.toUpperCase(),
+//       status: "ACTIVE",
+//       startDate: { $lte: new Date() },
+//       endDate: { $gte: new Date() },
+//     });
+
+//     if (!coupon) {
+//       return res.status(404).json({ success: false, message: "Coupon not found or inactive" });
+//     }
+
+//     // Check minimum order
+//     if (amount < coupon.minOrderAmount) {
+//       return res.status(400).json({
+//         success: false,
+//         message: `Minimum order amount for this coupon is ${coupon.minOrderAmount}`,
+//       });
+//     }
+
+//     // Calculate discount
+//     let discount = 0;
+//     if (coupon.type === "FLAT") {
+//       discount = coupon.value;
+//     } else if (coupon.type === "PERCENT") {
+//       discount = (amount * coupon.value) / 100;
+//       if (coupon.maxDiscountAmount) discount = Math.min(discount, coupon.maxDiscountAmount);
+//     }
+
+//     res.json({
+//       success: true,
+//       message: `Coupon applied successfully! You saved ₹${discount.toFixed(2)}`,
+//       coupon: {
+//         code: coupon.code,
+//         type: coupon.type,
+//         value: coupon.value,
+//         discount: discount.toFixed(2),
+//         minOrderAmount: coupon.minOrderAmount,
+//         maxDiscountAmount: coupon.maxDiscountAmount,
+//       },
+//     });
+//   } catch (err) {
+//     console.error("applyCoupon:", err);
+//     res.status(500).json({ success: false, message: "Server error" });
+//   }
+// };
