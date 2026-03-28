@@ -8,7 +8,8 @@ import {
   updateProduct,
   getProductById,
   getAllProducts,
-  deleteProduct
+  deleteProduct,
+  updateProductStatus
 } from "../../controllers/product.controller.js";
 
 import { checkPermission } from "../../middlewares/checkPermission.middleware.js";
@@ -37,6 +38,16 @@ router.put(
     arrayImagesThumbnailsUpload(10, 10),
   updateProduct
 );
+
+
+router.patch(
+  "/:productId/status",
+  authMiddleware, // attach user info
+   checkPermission(MODULE_KEY.PRODUCT,'update'),
+  updateProductStatus
+);
+
+
 
 // 🔹 Get product by ID
 router.get(

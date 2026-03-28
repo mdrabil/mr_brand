@@ -388,6 +388,8 @@ if (
   }
 };
 
+
+
 // ------------------- DELETE PRODUCT -------------------
 export const deleteProduct = async (req, res) => {
   try {
@@ -456,6 +458,52 @@ export const getProductById = async (req, res) => {
 
 
 
+export const updateProductStatus = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const { status } = req.body;
+
+    // ✅ Validate status
+    if (!Object.values(PRODUCT_STATUS).includes(status)) {
+      return res.status(400).json({ message: "Invalid status value" });
+    }
+
+    const product = await Product.findById(productId);
+    if (!product) return res.status(404).json({ message: "Product not found" });
+
+    // 🔐 ROLE VALIDATION
+    if (!req.user.roles.includes(USER_ROLE.SUPER_ADMIN)) {
+      const store = await Store.findById(product.store);
+
+      if (req.user.roles.includes(USER_ROLE.VENDOR)) {
+        if (store.owner.toString() !== req.user._id.toString())
+          return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (
+        [USER_ROLE.STORE_MANAGER, USER_ROLE.CHEF].some(r =>
+          req.user.roles.includes(r)
+        )
+      ) {
+        if (req.staffRoleStoreId.toString() !== store._id.toString())
+          return res.status(403).json({ message: "Access denied" });
+      }
+    }
+
+    // ✅ Update status only
+    product.status = status;
+    await product.save();
+
+    res.json({
+      success: true,
+      message: "Product status updated successfully",
+      product,
+    });
+  } catch (err) {
+    console.error("updateProductStatus:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 
 
 

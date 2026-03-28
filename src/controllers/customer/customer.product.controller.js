@@ -1,7 +1,9 @@
+import mongoose from "mongoose";
 import CategoryModel from "../../models/Category.model.js";
 import CouponModel from "../../models/Coupon.model.js";
 import CouponUsageModel from "../../models/CouponUsage.model.js";
 import ProductModel from "../../models/Product.model.js";
+import ReviewModel from "../../models/Review.model.js";
 
 
 
@@ -652,7 +654,108 @@ export const applyCoupon = async (req, res) => {
 };
 
 
+export const getSingleProductDetails = async (req, res) => {
+  try {
+    const { id, slug } = req.query;
 
+    let filter = {};
+
+    // ✅ support both id & name (SEO friendly)
+    if (id) {
+      filter._id = new mongoose.Types.ObjectId(id);
+    }
+
+    if (slug) {
+      filter.name = { $regex: `^${slug}$`, $options: "i" };
+    }
+
+    // ================= PARALLEL FETCH 🚀 =================
+    const [product, reviews] = await Promise.all([
+
+      // 🔥 PRODUCT
+      ProductModel.findOne(filter)
+        .populate("category", "name")
+        .populate("subCategory", "name")
+        .populate("store", "name")
+        .lean(),
+
+      // 🔥 REVIEWS
+      ReviewModel.find(filter._id ? { product: filter._id } : {})
+        .populate("user", "name")
+        .sort({ createdAt: -1 })
+        .lean()
+    ]);
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found"
+      });
+    }
+
+    // ================= CALCULATE RATING (SAFE) =================
+    const totalReviews = reviews.length;
+
+    const averageRating =
+      totalReviews > 0
+        ? (
+            reviews.reduce((acc, r) => acc + r.rating, 0) /
+            totalReviews
+          ).toFixed(1)
+        : 0;
+
+    // ================= FORMAT RESPONSE 🔥 =================
+    const formattedProduct = {
+      _id: product._id,
+      id: product._id,
+      rmProductId: product.rmProductId,
+      name: product.name,
+      description: product.description,
+      category: product.category,
+      subCategory: product.subCategory,
+      store: product.store,
+
+      label: product.label,
+
+      variants: product.variants,
+      attributes: product.attributes,
+
+      gstPercent: product.gstPercent,
+      status: product.status,
+
+      images: product.images?.map((img) => img.url),
+      thumbnails: product.thumbnails?.map((img) => img.url),
+
+      averageRating: Number(averageRating),
+      totalReviews,
+
+      createdAt: product.createdAt,
+
+      // 🔥 SEO META (IMPORTANT)
+      meta: {
+        title: product.name,
+        description:
+          product.description?.slice(0, 150) ||
+          `Buy ${product.name} at best price`,
+      },
+    };
+
+    // ================= RESPONSE =================
+    res.status(200).json({
+      success: true,
+      message: "Product details fetched successfully",
+      product: formattedProduct,
+      reviews,
+    });
+
+  } catch (err) {
+    console.error("getSingleProductDetails error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+};
 
 
 /**
