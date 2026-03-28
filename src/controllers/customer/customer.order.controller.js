@@ -377,9 +377,14 @@ export const placeOrderController = async (req, res) => {
 
       if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) throw new Error("Coupon usage limit reached");
 
-      if (coupon.type === "PERCENTAGE") {
+      if (coupon.type === "PERCENT") {
         discountAmount = (totalAmount * coupon.value) / 100;
-        if (coupon.maxDiscountAmount) discountAmount = Math.min(discountAmount, coupon.maxDiscountAmount);
+          if (coupon.maxDiscountAmount && coupon.maxDiscountAmount > 0) {
+        discountAmount = Math.min(discountAmount, coupon.maxDiscountAmount);
+    }
+
+
+        
       } else {
         discountAmount = coupon.value;
       }
