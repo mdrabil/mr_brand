@@ -3,6 +3,7 @@ import Store from "../models/Store.model.js";
 import Joi from "joi";
 import { USER_ROLE, PRODUCT_STATUS } from "../constants/enums.js";
 import cloudinary from "../config/cloudinaryConfig.js";
+import { generateProductSlug } from "../utils/rmId.js";
 
 // 🔹 Joi Validation Schemas
 const createProductSchema = Joi.object({
@@ -150,10 +151,20 @@ if(!req.user.roles.includes(USER_ROLE.SUPER_ADMIN)) {
     if (duplicate)
       return res.status(400).json({ message: "Product already exists in this store" });
 
+ let slug = await generateProductSlug(value.name);
+
+// 🔥 extra safety: agar slug already exist kare
+let existingSlug = await Product.findOne({ slug });
+
+if (existingSlug) {
+  // 👇 fallback (timestamp based unique)
+  slug = `${slug}-${Date.now()}`;
+}
     // ✅ STEP 1: Create product FIRST (without images)
     const product = await Product.create({
       ...value,
       images: [],
+      slug,
       thumbnails: [],
       createdBy: req.user._id,
     });
@@ -331,6 +342,22 @@ export const updateProduct = async (req, res) => {
     // ==============================
     // 📤 ADD NEW IMAGES (KEEP OLD)
     // ==============================
+
+    if (!product.slug) {
+  let newSlug = await generateProductSlug(value.name || product.name);
+
+  // 🔥 safety check (rare case)
+  const existingSlug = await Product.findOne({
+    slug: newSlug,
+    _id: { $ne: product._id },
+  });
+
+  if (existingSlug) {
+    newSlug = `${newSlug}-${Date.now()}`;
+  }
+
+  product.slug = newSlug;
+}
 
     if (req.files?.images) {
       for (const file of req.files.images) {

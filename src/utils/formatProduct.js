@@ -6,6 +6,7 @@ export const formatProduct = (product) => {
   return {
     _id: product._id,
     name: product.name,
+    slug:product.slug,
     description: product.description,
     gstPercent: product.gstPercent,
     label: product.label,

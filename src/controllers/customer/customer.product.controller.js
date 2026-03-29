@@ -432,7 +432,7 @@ export const getAllProducts = async (req, res) => {
       // product data
       ProductModel.find(filter)
         .select(`
-          _id rmProductId name description category subCategory 
+          _id rmProductId name slug description category subCategory 
           variants gstPercent status images thumbnails createdAt label totalReviews
         `)
         .populate("category", "name")
@@ -483,6 +483,7 @@ export const getAllProducts = async (req, res) => {
     const products = productData.map((p) => ({
       _id: p._id,
       rmProductId: p.rmProductId,
+      slug:p.slug,
       name: p.name,
       description: p.description,
       category: p.category,
@@ -942,7 +943,7 @@ export const getSingleProductDetails = async (req, res) => {
 
     // ================= PRODUCT FETCH =================
     const product = await ProductModel.findOne({
-      name: { $regex: `^${slug}$`, $options: "i" },
+      slug: { $regex: `^${slug}$`, $options: "i" },
     })
       .populate("category", "name")
       .populate("subCategory", "name")

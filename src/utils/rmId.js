@@ -26,6 +26,37 @@ export const generateTransactionId = () => {
 
 
 
+// 🔥 slug cleaner
+const getSlug = (title = "") => {
+  return title
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
+};
+
+// 🔥 FINAL UNIQUE SLUG GENERATOR
+export const generateProductSlug = async (name) => {
+  // base slug
+  const baseSlug = getSlug(name);
+
+  // separate counter (NO rmId connection)
+  const counter = await Counter.findByIdAndUpdate(
+    "PRODUCT_SLUG",
+    { $inc: { seq: 1 } },
+    { new: true, upsert: true }
+  );
+
+  const suffix = counter.seq; // 1,2,3...
+
+  // first item clean, next with suffix
+  const slug = suffix === 1 ? baseSlug : `${baseSlug}-${suffix}`;
+
+  return slug;
+};
+
+
 // const getNextSequence = async (name) => {
 //   const counter = await Counter.findByIdAndUpdate(
 //     name,

@@ -38,6 +38,11 @@ const productSchema = new mongoose.Schema(
       required: true,
       index: true
     },
+   slug: {
+  type: String,
+  unique: true,
+  index: true
+},
   label: { type: String, required: true, default:"Weight" },
 
     description: String,
