@@ -366,7 +366,7 @@ export const getAllCategorys = async (req, res) => {
 
 
 
-export const getAllProducts = async (req, res) => {
+export const getAllProducts2 = async (req, res) => {
   try {
     const {
       page = 1,
@@ -514,6 +514,106 @@ export const getAllProducts = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error. Please try again later."
+    });
+  }
+};
+
+
+
+export const getAllProducts = async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 20,
+      category,
+      search,
+      sortBy,
+      order
+    } = req.query;
+
+    const pageNumber = Number(page);
+    const limitNumber = Number(limit);
+
+    let filter = {};
+    let andFilters = [];
+
+    // ✅ CATEGORY (id only)
+    if (category && mongoose.Types.ObjectId.isValid(category)) {
+      const catId = new mongoose.Types.ObjectId(category);
+
+      andFilters.push({
+        $or: [
+          { category: catId },
+          { subCategory: catId }
+        ]
+      });
+    }
+
+    // ✅ SEARCH (ONLY NAME)
+    if (search) {
+      andFilters.push({
+        name: { $regex: search, $options: "i" }
+      });
+    }
+
+    // ✅ FINAL FILTER
+    if (andFilters.length > 0) {
+      filter.$and = andFilters;
+    }
+
+    // ✅ SORT
+    let sortObj = { createdAt: -1 };
+    if (sortBy) {
+      sortObj = { [sortBy]: order === "asc" ? 1 : -1 };
+    }
+
+    // 🚀 PARALLEL FAST QUERY
+    const [total, productData] = await Promise.all([
+      ProductModel.countDocuments(filter),
+
+      ProductModel.find(filter)
+        .select(`
+          _id rmProductId name slug description 
+          variants gstPercent status images createdAt label totalReviews
+        `)
+        .lean()
+        .sort(sortObj)
+        .skip((pageNumber - 1) * limitNumber)
+        .limit(limitNumber)
+    ]);
+
+    // ✅ SAME DATA (nothing removed)
+    const products = productData.map((p) => ({
+      _id: p._id,
+      rmProductId: p.rmProductId,
+      slug: p.slug,
+      name: p.name,
+      description: p.description,
+      category: p.category,
+      label: p.label,
+      subCategory: p.subCategory,
+      variants: p.variants,
+      gstPercent: p.gstPercent,
+      status: p.status,
+      reviews: p.totalReviews || 0,
+      images: p.images?.map((img) => img.url),
+      createdAt: p.createdAt
+    }));
+
+    res.status(200).json({
+      success: true,
+      message: "Products fetched successfully",
+      total,
+      page: pageNumber,
+      limit: limitNumber,
+      products
+    });
+
+  } catch (err) {
+    console.error("getAllProducts error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Server error"
     });
   }
 };
