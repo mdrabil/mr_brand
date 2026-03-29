@@ -516,7 +516,7 @@ export const createCustomer = async (req, res) => {
     transactionStarted = false; // transaction committed
     session.endSession();
 
-    await cart.populate({ path: "items.productId", select: "name images variants gstPercent" });
+    await cart.populate({ path: "items.productId", select: "name images variants gstPercent slug" });
 
     const tokens = generateToken({ id: customer._id, role: "CUSTOMER" });
 
@@ -686,11 +686,10 @@ export const customerLogin = async (req, res) => {
     }
 
     await cart.save();
-
-    await cart.populate({
-      path: "items.productId",
-
-    });
+await cart.populate({
+  path: "items.productId",
+  select: "name images variants gstPercent slug",
+});
 
 
 

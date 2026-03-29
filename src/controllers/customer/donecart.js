@@ -71,7 +71,7 @@ export const addToCart = async (req, res) => {
 
     await cart.populate({
       path: "items.productId",
-      select: "name images variants gstPercent slug",
+      select: "name images variants gstPercent",
     });
 
     return res.json({
@@ -158,7 +158,7 @@ export const updateCart = async (req, res) => {
 
     await cart.populate({
       path: "items.productId",
-      select: "name images variants gstPercent slug",
+      select: "name images variants gstPercent",
     });
 
     return res.json({
@@ -192,7 +192,7 @@ export const removeFromCart = async (req, res) => {
 
     await cart.populate({
       path: "items.productId",
-      select: "name images variants gstPercent slug",
+      select: "name images variants gstPercent",
     });
 
     return res.json({
@@ -212,7 +212,7 @@ export const getCart = async (req, res) => {
 
     let cart = await Cart.findOne({ customerId }).populate({
       path: "items.productId",
-      select: "name images variants gstPercent slug",
+      select: "name images variants gstPercent",
     });
 
     if (!cart) {
