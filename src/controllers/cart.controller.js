@@ -1,8 +1,9 @@
+
 import Cart from "../models/Cart.model.js";
 import Product from "../models/Product.model.js";
 import Joi from "joi";
 import mongoose from "mongoose";
-import { USER_ROLE } from "../constants/enums.js";
+
 import { formatCart } from "../utils/formatProduct.js";
 
 /* ------------------- Helpers ------------------- */
@@ -30,59 +31,139 @@ const updateItemSchema = Joi.object({
 
 /* ------------------- Add To Cart ------------------- */
 
+// export const addToCart = async (req, res) => {
+//   try {
+//     const { error, value } = addItemSchema.validate(req.body);
+//     if (error)
+//       return res.status(400).json({ message: error.message });
+
+//     const { productId, variantId, qty } = value;
+//     const customerId = req.user._id;
+
+//     // console.log("get the data ",customerId)
+
+//     const product = await Product.findById(productId);
+//     if (!product)
+//       return res.status(404).json({ message: "Product not found" });
+
+//     const variant = product.variants.id(variantId);
+//     if (!variant)
+//       return res.status(400).json({ message: "Invalid variant" });
+
+//     let cart = await Cart.findOne({ customerId });
+
+//     if (!cart) {
+//       cart = await Cart.create({
+//         customerId,
+//         items: [{ productId, variantId, qty }],
+//       });
+//     } else {
+//       const existing = cart.items.find(
+//         i =>
+//           i.productId.toString() === productId &&
+//           i.variantId.toString() === variantId
+//       );
+
+//       if (existing) existing.qty += qty;
+//       else cart.items.push({ productId, variantId, qty });
+
+//       await cart.save();
+//     }
+
+//     await cart.populate({
+//       path: "items.productId",
+//       select: "name images variants gstPercent slug",
+//     });
+
+//     return res.json({
+//       success: true,
+//       items: formatCart(cart),
+//     });
+
+//   } catch (err) {
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
+
+
+
 export const addToCart = async (req, res) => {
   try {
+    console.log("---- ADD TO CART START ----");
+    console.log("Request body:", req.body);
+
+    // Validate input
     const { error, value } = addItemSchema.validate(req.body);
-    if (error)
-      return res.status(400).json({ message: error.message });
+    if (error) return res.status(400).json({ message: error.message });
 
     const { productId, variantId, qty } = value;
     const customerId = req.user._id;
+    console.log("Customer ID:", customerId);
 
-    // console.log("get the data ",customerId)
-
+    // Fetch product
     const product = await Product.findById(productId);
-    if (!product)
-      return res.status(404).json({ message: "Product not found" });
+    if (!product) return res.status(404).json({ message: "Product not found" });
 
-    const variant = product.variants.id(variantId);
-    if (!variant)
-      return res.status(400).json({ message: "Invalid variant" });
+    // Safe variant check
+    const variant = product.variants?.id(variantId);
+    if (!variant) return res.status(400).json({ message: "Invalid variant" });
 
+    // Find or create cart
     let cart = await Cart.findOne({ customerId });
-
     if (!cart) {
+      console.log("Creating new cart...");
       cart = await Cart.create({
         customerId,
         items: [{ productId, variantId, qty }],
       });
     } else {
+      // Clean bad items from old carts
+      cart.items = cart.items.filter(i => i.productId);
+
+      // Check if item already exists
       const existing = cart.items.find(
-        i =>
-          i.productId.toString() === productId &&
-          i.variantId.toString() === variantId
+        i => i.productId.toString() === productId && i.variantId.toString() === variantId
       );
 
-      if (existing) existing.qty += qty;
-      else cart.items.push({ productId, variantId, qty });
+      if (existing) {
+        console.log("Item exists, updating qty:", existing.qty, "+", qty);
+        existing.qty += qty;
+      } else {
+        console.log("Adding new item to cart");
+        cart.items.push({ productId, variantId, qty });
+      }
 
+      // Save cart safely
       await cart.save();
+      console.log("Cart saved successfully");
     }
 
+    // Populate product details
     await cart.populate({
       path: "items.productId",
       select: "name images variants gstPercent slug",
     });
 
+    // Format cart safely
+    let formattedItems = [];
+    try {
+      formattedItems = formatCart(cart);
+    } catch (e) {
+      console.error("Error formatting cart:", e);
+    }
+
+    console.log("---- ADD TO CART END ----");
     return res.json({
       success: true,
-      items: formatCart(cart),
+      items: formattedItems,
     });
 
   } catch (err) {
+    console.error("Server error in addToCart:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
+
 
 /* ------------------- Update Cart Item ------------------- */
 

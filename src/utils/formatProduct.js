@@ -66,7 +66,6 @@ export const formatCart = (cart) => {
       productId: product?._id?.toString(),
       variantId: item.variantId?.toString(),
       name: product?.name || "",
-      slug:product?.slug || "",
       variantLabel: variant?.label || "",
       variantValue: variant?.value || "",
       mrp: variant?.mrp || 0,
