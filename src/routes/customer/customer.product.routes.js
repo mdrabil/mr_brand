@@ -22,7 +22,8 @@ const router = express.Router();
 // ✅ FIRST static routes
 router.get("/category-all", getAllCategorys);
 router.get("/", getAllProducts);
-router.get("/product-details", getSingleProductDetails);
+// router.get("/product-details", getSingleProductDetails);
+router.get("/product-details/:slug", getSingleProductDetails);
 router.post("/add-review",customerAuth, addReview);
 router.get("/coupon/apply", applyCoupon);
 router.get("/coupon/check-coupon", customerauthMiddlewareOptional, checkCouponActiveOrNot);

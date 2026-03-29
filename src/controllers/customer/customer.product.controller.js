@@ -205,6 +205,167 @@ export const getAllCategorys = async (req, res) => {
 
 
 
+// export const getAllProducts = async (req, res) => {
+//   try {
+//     const {
+//       page = 1,
+//       limit = 20,
+//       store,
+//       category,
+//       status,
+//       name,
+//       search
+//     } = req.query;
+
+//     const pageNumber = Number(page);
+//     const limitNumber = Number(limit);
+
+//     let filter = {};
+
+//     // ================= FILTERS =================
+//     if (store) {
+//       filter.store = new mongoose.Types.ObjectId(store);
+//     }
+
+//     if (status) {
+//       filter.status = status;
+//     }
+
+//     if (name) {
+//       filter.name = { $regex: name, $options: "i" };
+//     }
+
+//     // ================= CATEGORY (OPTIMIZED 🔥) =================
+//     if (category) {
+//       const foundCategory = await CategoryModel
+//         .findOne({
+//           name: { $regex: `^${category}$`, $options: "i" }
+//         })
+//         .select("_id")
+//         .lean(); // ✅ IMPORTANT
+
+//       if (foundCategory) {
+//         filter.category = foundCategory._id;
+//       } else {
+//         return res.status(200).json({
+//           success: true,
+//           message: "No products found",
+//           total: 0,
+//           page: pageNumber,
+//           limit: limitNumber,
+//           products: [],
+//           categorySummary: []
+//         });
+//       }
+//     }
+
+//     // ================= SEARCH (SAME LOGIC BUT LIGHT) =================
+//     if (search) {
+//       filter.$or = [
+//         { name: { $regex: search, $options: "i" } },
+//         { description: { $regex: search, $options: "i" } },
+//       ];
+//     }
+
+//     // ================= PARALLEL EXECUTION 🚀 =================
+//     const [total, productData, categorySummary] = await Promise.all([
+
+//       // ✅ COUNT
+//       ProductModel.countDocuments(filter),
+
+//       // ✅ PRODUCTS (OPTIMIZED)
+//       ProductModel.find(filter)
+//         .select(`
+//           _id rmProductId name description category subCategory 
+//           variants gstPercent status images thumbnails createdAt label
+//         `)
+//         .populate("category", "name")
+//         .populate("subCategory", "name")
+//         .lean() // 🔥 BIG PERFORMANCE BOOST
+//         .sort({ createdAt: -1 })
+//         .skip((pageNumber - 1) * limitNumber)
+//         .limit(limitNumber),
+
+//       // ================= CATEGORY SUMMARY (OPTIMIZED 🚀) =================
+//       (() => {
+//         const summaryFilter = { ...filter };
+//         delete summaryFilter.category;
+
+//         return ProductModel.aggregate([
+//           { $match: summaryFilter },
+
+//           {
+//             $group: {
+//               _id: "$category",
+//               count: { $sum: 1 }
+//             }
+//           },
+
+//           {
+//             $lookup: {
+//               from: "categories",
+//               localField: "_id",
+//               foreignField: "_id",
+//               pipeline: [
+//                 { $match: { isActive: true } },
+//                 { $project: { name: 1 } }
+//               ],
+//               as: "categoryInfo"
+//             }
+//           },
+
+//           { $unwind: "$categoryInfo" },
+
+//           {
+//             $project: {
+//               _id: 0,
+//               category: "$categoryInfo.name",
+//               count: 1
+//             }
+//           }
+//         ]);
+//       })()
+//     ]);
+
+//     // ================= SAME MAPPING (NO CHANGE ✅) =================
+//     const products = productData.map((p) => ({
+//       _id: p._id,
+//       rmProductId: p.rmProductId,
+//       name: p.name,
+//       description: p.description,
+//       category: p.category,
+//       label: p.label,
+//       subCategory: p.subCategory,
+//       variants: p.variants,
+//       gstPercent: p.gstPercent,
+//       status: p.status,
+//       images: p.images?.map((img) => img.url),
+//       thumbnails: p.thumbnails?.map((img) => img.url),
+//       createdAt: p.createdAt,
+//     }));
+
+//     // ================= RESPONSE =================
+//     res.status(200).json({
+//       success: true,
+//       message: "Products fetched successfully",
+//       total,
+//       page: pageNumber,
+//       limit: limitNumber,
+//       products,
+//       categorySummary,
+//     });
+
+//   } catch (err) {
+//     console.error("getAllProducts error:", err);
+//     res.status(500).json({
+//       success: false,
+//       message: "Server error. Please try again later."
+//     });
+//   }
+// };
+
+
+
 export const getAllProducts = async (req, res) => {
   try {
     const {
@@ -214,7 +375,9 @@ export const getAllProducts = async (req, res) => {
       category,
       status,
       name,
-      search
+      search,
+      sortBy, // optional: field to sort
+      order   // optional: asc/desc
     } = req.query;
 
     const pageNumber = Number(page);
@@ -223,30 +386,18 @@ export const getAllProducts = async (req, res) => {
     let filter = {};
 
     // ================= FILTERS =================
-    if (store) {
-      filter.store = new mongoose.Types.ObjectId(store);
-    }
+    if (store) filter.store = new mongoose.Types.ObjectId(store);
+    if (status) filter.status = status;
+    if (name) filter.name = { $regex: name, $options: "i" };
 
-    if (status) {
-      filter.status = status;
-    }
-
-    if (name) {
-      filter.name = { $regex: name, $options: "i" };
-    }
-
-    // ================= CATEGORY (OPTIMIZED 🔥) =================
+    // ================= CATEGORY =================
     if (category) {
-      const foundCategory = await CategoryModel
-        .findOne({
-          name: { $regex: `^${category}$`, $options: "i" }
-        })
-        .select("_id")
-        .lean(); // ✅ IMPORTANT
+      const foundCategory = await CategoryModel.findOne({
+        name: { $regex: `^${category}$`, $options: "i" }
+      }).select("_id").lean();
 
-      if (foundCategory) {
-        filter.category = foundCategory._id;
-      } else {
+      if (foundCategory) filter.category = foundCategory._id;
+      else
         return res.status(200).json({
           success: true,
           message: "No products found",
@@ -256,51 +407,54 @@ export const getAllProducts = async (req, res) => {
           products: [],
           categorySummary: []
         });
-      }
     }
 
-    // ================= SEARCH (SAME LOGIC BUT LIGHT) =================
+    // ================= SEARCH =================
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } }
       ];
     }
 
-    // ================= PARALLEL EXECUTION 🚀 =================
-    const [total, productData, categorySummary] = await Promise.all([
+    // ================= SORTING =================
+    let sortObj = { createdAt: -1 }; // default: newest first
+    if (sortBy) {
+      const sortOrder = order === "asc" ? 1 : -1;
+      sortObj = { [sortBy]: sortOrder };
+    }
 
-      // ✅ COUNT
+    // ================= PARALLEL EXECUTION =================
+    const [total, productData, categorySummary] = await Promise.all([
+      // total count
       ProductModel.countDocuments(filter),
 
-      // ✅ PRODUCTS (OPTIMIZED)
+      // product data
       ProductModel.find(filter)
         .select(`
           _id rmProductId name description category subCategory 
-          variants gstPercent status images thumbnails createdAt label
+          variants gstPercent status images thumbnails createdAt label totalReviews
         `)
         .populate("category", "name")
         .populate("subCategory", "name")
-        .lean() // 🔥 BIG PERFORMANCE BOOST
-        .sort({ createdAt: -1 })
+        .lean()
+        .sort(sortObj)
         .skip((pageNumber - 1) * limitNumber)
         .limit(limitNumber),
 
-      // ================= CATEGORY SUMMARY (OPTIMIZED 🚀) =================
-      (() => {
+      // category summary
+      (async () => {
         const summaryFilter = { ...filter };
         delete summaryFilter.category;
 
         return ProductModel.aggregate([
           { $match: summaryFilter },
-
           {
             $group: {
               _id: "$category",
               count: { $sum: 1 }
             }
           },
-
           {
             $lookup: {
               from: "categories",
@@ -313,9 +467,7 @@ export const getAllProducts = async (req, res) => {
               as: "categoryInfo"
             }
           },
-
           { $unwind: "$categoryInfo" },
-
           {
             $project: {
               _id: 0,
@@ -327,7 +479,7 @@ export const getAllProducts = async (req, res) => {
       })()
     ]);
 
-    // ================= SAME MAPPING (NO CHANGE ✅) =================
+    // ================= MAP PRODUCTS =================
     const products = productData.map((p) => ({
       _id: p._id,
       rmProductId: p.rmProductId,
@@ -339,6 +491,7 @@ export const getAllProducts = async (req, res) => {
       variants: p.variants,
       gstPercent: p.gstPercent,
       status: p.status,
+      totalReviews: p.totalReviews || 0, // include totalReviews
       images: p.images?.map((img) => img.url),
       thumbnails: p.thumbnails?.map((img) => img.url),
       createdAt: p.createdAt,
@@ -352,7 +505,7 @@ export const getAllProducts = async (req, res) => {
       page: pageNumber,
       limit: limitNumber,
       products,
-      categorySummary,
+      categorySummary
     });
 
   } catch (err) {
@@ -654,84 +807,201 @@ export const applyCoupon = async (req, res) => {
 };
 
 
+// export const getSingleProductDetails = async (req, res) => {
+//   try {
+//     const { id, slug } = req.query;
+
+//     console.log("get data from frontend:", req.query);
+
+//     // ✅ REQUIRED VALIDATION
+//     if (!id && !slug) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Product id or slug is required",
+//       });
+//     }
+
+//     let filter = {};
+
+//     // ✅ FILTER BY ID
+//     if (id) {
+//       if (!mongoose.Types.ObjectId.isValid(id)) {
+//         return res.status(400).json({
+//           success: false,
+//           message: "Invalid product id",
+//         });
+//       }
+//       filter._id = new mongoose.Types.ObjectId(id);
+//     }
+
+//     // ✅ FILTER BY SLUG (NAME)
+//     if (slug) {
+//       filter.name = { $regex: `^${slug}$`, $options: "i" };
+//     }
+
+//     // ================= PARALLEL FETCH 🚀 =================
+//     const [product, reviews] = await Promise.all([
+//       ProductModel.findOne(filter)
+//         .populate("category", "name")
+//         .populate("subCategory", "name")
+//         .populate("store", "name")
+//         .lean(),
+
+//       ReviewModel.find(filter._id ? { product: filter._id } : {})
+//         .populate("user", "name")
+//         .sort({ createdAt: -1 })
+//         .lean(),
+//     ]);
+
+//     // ✅ PRODUCT NOT FOUND
+//     if (!product) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Product not found",
+//       });
+//     }
+
+//     console.log("found product:", product.name);
+
+//     // ================= CALCULATE RATING =================
+//     const totalReviews = reviews.length;
+
+//     const averageRating =
+//       totalReviews > 0
+//         ? (
+//             reviews.reduce((acc, r) => acc + r.rating, 0) /
+//             totalReviews
+//           ).toFixed(1)
+//         : 0;
+
+//     // ================= RESPONSE FORMAT =================
+//     const formattedProduct = {
+//       _id: product._id,
+//       id: product._id,
+//       rmProductId: product.rmProductId,
+//       name: product.name,
+//       description: product.description,
+//       category: product.category,
+//       subCategory: product.subCategory,
+//       store: product.store,
+
+//       label: product.label,
+//       variants: product.variants,
+//       attributes: product.attributes,
+
+//       gstPercent: product.gstPercent,
+//       status: product.status,
+
+//       images: product.images?.map((img) => img.url),
+//       thumbnails: product.thumbnails?.map((img) => img.url),
+
+//       averageRating: Number(averageRating),
+//       totalReviews,
+
+//       createdAt: product.createdAt,
+
+//       // ✅ SEO META
+//       meta: {
+//         title: product.name,
+//         description:
+//           product.description?.slice(0, 150) ||
+//           `Buy ${product.name} at best price`,
+//       },
+//     };
+
+//     // ================= SUCCESS RESPONSE =================
+//     return res.status(200).json({
+//       success: true,
+//       message: "Product details fetched successfully",
+//       product: formattedProduct,
+//       reviews,
+//     });
+
+//   } catch (err) {
+//     console.error("getSingleProductDetails error:", err);
+
+//     return res.status(500).json({
+//       success: false,
+//       message: "Server error",
+//     });
+//   }
+// };
+
+
 export const getSingleProductDetails = async (req, res) => {
   try {
-    const { id, slug } = req.query;
+    const { slug } = req.params;
 
-    let filter = {};
-
-    // ✅ support both id & name (SEO friendly)
-    if (id) {
-      filter._id = new mongoose.Types.ObjectId(id);
+    // ================= VALIDATION =================
+    if (!slug) {
+      return res.status(400).json({
+        success: false,
+        message: "Product slug is required",
+      });
     }
 
-    if (slug) {
-      filter.name = { $regex: `^${slug}$`, $options: "i" };
-    }
-
-    // ================= PARALLEL FETCH 🚀 =================
-    const [product, reviews] = await Promise.all([
-
-      // 🔥 PRODUCT
-      ProductModel.findOne(filter)
-        .populate("category", "name")
-        .populate("subCategory", "name")
-        .populate("store", "name")
-        .lean(),
-
-      // 🔥 REVIEWS
-      ReviewModel.find(filter._id ? { product: filter._id } : {})
-        .populate("user", "name")
-        .sort({ createdAt: -1 })
-        .lean()
-    ]);
+    // ================= PRODUCT FETCH =================
+    const product = await ProductModel.findOne({
+      name: { $regex: `^${slug}$`, $options: "i" },
+    })
+      .populate("category", "name")
+      .populate("subCategory", "name")
+      .populate("store", "name")
+      .lean();
 
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: "Product not found"
+        message: "Product not found",
       });
     }
 
-    // ================= CALCULATE RATING (SAFE) =================
+    // ================= REVIEWS FETCH =================
+    const reviews = await ReviewModel.find({ product: product._id })
+      .populate("user", "name")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // ================= RATING =================
     const totalReviews = reviews.length;
 
     const averageRating =
       totalReviews > 0
-        ? (
-            reviews.reduce((acc, r) => acc + r.rating, 0) /
-            totalReviews
-          ).toFixed(1)
+        ? Number(
+            (
+              reviews.reduce((acc, r) => acc + (r.rating || 0), 0) /
+              totalReviews
+            ).toFixed(1)
+          )
         : 0;
 
-    // ================= FORMAT RESPONSE 🔥 =================
+    // ================= FORMAT RESPONSE =================
     const formattedProduct = {
-      _id: product._id,
       id: product._id,
-      rmProductId: product.rmProductId,
       name: product.name,
+      slug: product.slug,
       description: product.description,
+
       category: product.category,
       subCategory: product.subCategory,
       store: product.store,
 
       label: product.label,
-
-      variants: product.variants,
-      attributes: product.attributes,
+      variants: product.variants || [],
+      attributes: product.attributes || [],
 
       gstPercent: product.gstPercent,
       status: product.status,
 
-      images: product.images?.map((img) => img.url),
-      thumbnails: product.thumbnails?.map((img) => img.url),
+      images: product.images?.map((img) => img.url) || [],
+      thumbnails: product.thumbnails?.map((img) => img.url) || [],
 
-      averageRating: Number(averageRating),
+      averageRating,
       totalReviews,
 
       createdAt: product.createdAt,
 
-      // 🔥 SEO META (IMPORTANT)
+      // ✅ SEO
       meta: {
         title: product.name,
         description:
@@ -741,23 +1011,20 @@ export const getSingleProductDetails = async (req, res) => {
     };
 
     // ================= RESPONSE =================
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      message: "Product details fetched successfully",
       product: formattedProduct,
       reviews,
     });
+  } catch (error) {
+    console.error("Error:", error);
 
-  } catch (err) {
-    console.error("getSingleProductDetails error:", err);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: "Server error"
+      message: "Server error",
     });
   }
 };
-
-
 /**
  * Check if coupon is active and valid
  * Query params:
