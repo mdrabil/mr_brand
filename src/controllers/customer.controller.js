@@ -470,6 +470,69 @@ const orderListSchema = Joi.object({
 //   }
 // };
 
+// export const createCustomer = async (req, res) => {
+//   const session = await mongoose.startSession();
+//   let transactionStarted = false;
+
+//   try {
+//     session.startTransaction();
+//     transactionStarted = true;
+
+//     const { error, value } = customerValidator.validate(req.body);
+//     if (error) {
+//       if (transactionStarted) await session.abortTransaction();
+//       session.endSession();
+//       return res.status(400).json({ success: false, message: error.message });
+//     }
+
+//     const { name, mobile, email, password, guestCart = [] } = value;
+
+//     const existing = await Customer.findOne(
+//       { $or: [{ mobile }, { email }] },
+//       null,
+//       { session }
+//     );
+
+//     if (existing) {
+//       if (transactionStarted) await session.abortTransaction();
+//       session.endSession();
+//       return res.status(409).json({ success: false, message: "Customer already exists" });
+//     }
+
+//     const hashedPassword = await bcrypt.hash(password, 12);
+//     const rmCustomerId = await generateRMId("RMCU", "CUSTOMER");
+
+//     const [customer] = await Customer.create([{ fullName: name, mobile, email, password: hashedPassword, rmCustomerId, role: "CUSTOMER" }], { session });
+//     const [cart] = await CartModel.create([{ customerId: customer._id, items: [] }], { session });
+
+//     // Merge guest cart
+//     for (const gItem of guestCart) {
+//       cart.items.push({ productId: gItem.productId, variantId: gItem.variantId, qty: gItem.qty });
+//     }
+
+//     await cart.save({ session });
+
+//     await session.commitTransaction();
+//     transactionStarted = false; // transaction committed
+//     session.endSession();
+
+//     await cart.populate({ path: "items.productId", select: "name images variants gstPercent slug" });
+
+//     const tokens = generateToken({ id: customer._id, role: "CUSTOMER" });
+
+//     return res.status(201).json({ success: true, message: "Customer created successfully", tokens, user: customer,
+//        items: formatCart(cart),
+//      });
+//   } catch (err) {
+//     if (transactionStarted) {
+//       await session.abortTransaction();
+//     }
+//     session.endSession();
+//     console.error("Create Customer Error:", err);
+//     return res.status(500).json({ success: false, message: "Internal Server Error" });
+//   }
+// };
+
 export const createCustomer = async (req, res) => {
   const session = await mongoose.startSession();
   let transactionStarted = false;
@@ -490,7 +553,7 @@ export const createCustomer = async (req, res) => {
     const existing = await Customer.findOne(
       { $or: [{ mobile }, { email }] },
       null,
-      { session }
+      { session, lean: true } // lean makes query faster
     );
 
     if (existing) {
@@ -502,31 +565,38 @@ export const createCustomer = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 12);
     const rmCustomerId = await generateRMId("RMCU", "CUSTOMER");
 
-    const [customer] = await Customer.create([{ fullName: name, mobile, email, password: hashedPassword, rmCustomerId, role: "CUSTOMER" }], { session });
-    const [cart] = await CartModel.create([{ customerId: customer._id, items: [] }], { session });
+    // Create customer & cart in batch
+    const [customer] = await Customer.create(
+      [{ fullName: name, mobile, email, password: hashedPassword, rmCustomerId, role: "CUSTOMER" }],
+      { session }
+    );
 
-    // Merge guest cart
-    for (const gItem of guestCart) {
-      cart.items.push({ productId: gItem.productId, variantId: gItem.variantId, qty: gItem.qty });
-    }
+    const cartItems = guestCart.map(gItem => ({
+      productId: gItem.productId,
+      variantId: gItem.variantId,
+      qty: gItem.qty,
+    }));
 
-    await cart.save({ session });
+    const [cart] = await CartModel.create([{ customerId: customer._id, items: cartItems }], { session });
 
     await session.commitTransaction();
-    transactionStarted = false; // transaction committed
+    transactionStarted = false;
     session.endSession();
 
+    // Populate only needed fields
     await cart.populate({ path: "items.productId", select: "name images variants gstPercent slug" });
 
     const tokens = generateToken({ id: customer._id, role: "CUSTOMER" });
 
-    return res.status(201).json({ success: true, message: "Customer created successfully", tokens, user: customer,
-       items: formatCart(cart),
-     });
+    return res.status(201).json({
+      success: true,
+      message: "Customer created successfully",
+      tokens,
+      user: customer,
+      items: formatCart(cart),
+    });
   } catch (err) {
-    if (transactionStarted) {
-      await session.abortTransaction();
-    }
+    if (transactionStarted) await session.abortTransaction();
     session.endSession();
     console.error("Create Customer Error:", err);
     return res.status(500).json({ success: false, message: "Internal Server Error" });
@@ -635,8 +705,6 @@ export const customerLogin = async (req, res) => {
   try {
     const { mobile, email, password, guestCart = [] } = req.body;
 
-    console.log("get gestcart",guestCart)
-
     if ((!mobile && !email) || !password) {
       return res.status(400).json({
         success: false,
@@ -644,38 +712,34 @@ export const customerLogin = async (req, res) => {
       });
     }
 
+    // 🔹 Build query
     const query = [];
     if (mobile) query.push({ mobile });
     if (email) query.push({ email });
 
-    const customer = await Customer.findOne({ $or: query }).select("+password");
-
+    // 🔹 Fetch customer with password
+    const customer = await Customer.findOne({ $or: query }).select("+password").lean();
     if (!customer)
       return res.status(404).json({ success: false, message: "Customer not found" });
 
+    // 🔹 Validate password
     const isMatch = await bcrypt.compare(password, customer.password);
     if (!isMatch)
       return res.status(401).json({ success: false, message: "Invalid password" });
 
+    // 🔹 Fetch or create cart
     let cart = await CartModel.findOne({ customerId: customer._id });
-
     if (!cart) {
-      cart = await CartModel.create({
-        customerId: customer._id,
-        items: [],
-      });
+      cart = await CartModel.create({ customerId: customer._id, items: [] });
     }
 
-    // 🔥 Merge Guest Cart Safely
-    for (const gItem of guestCart) {
-      const existingItem = cart.items.find(
-        (item) =>
-          item.productId?.toString() === gItem?.productId &&
-          item.variantId?.toString() === gItem.variantId
-      );
+    // 🔹 Merge guest cart efficiently using Map
+    const cartMap = new Map(cart.items.map(item => [item.productId.toString() + '_' + item.variantId.toString(), item]));
 
-      if (existingItem) {
-        existingItem.qty += gItem.qty;
+    guestCart.forEach(gItem => {
+      const key = gItem.productId + '_' + gItem.variantId;
+      if (cartMap.has(key)) {
+        cartMap.get(key).qty += gItem.qty;
       } else {
         cart.items.push({
           productId: gItem.productId,
@@ -683,32 +747,109 @@ export const customerLogin = async (req, res) => {
           qty: gItem.qty,
         });
       }
-    }
-
-    await cart.save();
-await cart.populate({
-  path: "items.productId",
-  select: "name images variants gstPercent slug",
-});
-
-
-
-    const tokens = generateToken({
-      id: customer._id,
-      role: "CUSTOMER",
     });
 
-  return res.json({
-  success: true,
-  tokens,
-  user: customer,
-  items: formatCart(cart),
-});
+    await cart.save();
+
+    // 🔹 Populate only necessary fields
+    await cart.populate({
+      path: "items.productId",
+      select: "name images variants gstPercent slug",
+    });
+
+    // 🔹 Generate token
+    const tokens = generateToken({ id: customer._id, role: "CUSTOMER" });
+
+    return res.json({
+      success: true,
+      tokens,
+      user: customer,
+      items: formatCart(cart),
+    });
   } catch (err) {
     console.error("Login Error:", err);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
+// export const customerLogin = async (req, res) => {
+//   try {
+//     const { mobile, email, password, guestCart = [] } = req.body;
+
+//     console.log("get gestcart",guestCart)
+
+//     if ((!mobile && !email) || !password) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Mobile or Email and Password required",
+//       });
+//     }
+
+//     const query = [];
+//     if (mobile) query.push({ mobile });
+//     if (email) query.push({ email });
+
+//     const customer = await Customer.findOne({ $or: query }).select("+password");
+
+//     if (!customer)
+//       return res.status(404).json({ success: false, message: "Customer not found" });
+
+//     const isMatch = await bcrypt.compare(password, customer.password);
+//     if (!isMatch)
+//       return res.status(401).json({ success: false, message: "Invalid password" });
+
+//     let cart = await CartModel.findOne({ customerId: customer._id });
+
+//     if (!cart) {
+//       cart = await CartModel.create({
+//         customerId: customer._id,
+//         items: [],
+//       });
+//     }
+
+//     // 🔥 Merge Guest Cart Safely
+//     for (const gItem of guestCart) {
+//       const existingItem = cart.items.find(
+//         (item) =>
+//           item.productId?.toString() === gItem?.productId &&
+//           item.variantId?.toString() === gItem.variantId
+//       );
+
+//       if (existingItem) {
+//         existingItem.qty += gItem.qty;
+//       } else {
+//         cart.items.push({
+//           productId: gItem.productId,
+//           variantId: gItem.variantId,
+//           qty: gItem.qty,
+//         });
+//       }
+//     }
+
+//     await cart.save();
+// await cart.populate({
+//   path: "items.productId",
+//   select: "name images variants gstPercent slug",
+// });
+
+
+
+//     const tokens = generateToken({
+//       id: customer._id,
+//       role: "CUSTOMER",
+//     });
+
+//   return res.json({
+//   success: true,
+//   tokens,
+//   user: customer,
+//   items: formatCart(cart),
+// });
+//   } catch (err) {
+//     console.error("Login Error:", err);
+//     res.status(500).json({ success: false, message: "Server error" });
+//   }
+// };
 
 
 
