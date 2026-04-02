@@ -24,9 +24,10 @@ import JobRoutes from "../routes/job.routes.js";
 import CmsRoutes from "../routes/cms.routes.js";
 import FaqRoutes from "../routes/faq.routes.js";
 import TestimonialRoutes from "../routes/testimonial.routes.js";
+import moduleRoutes from "../routes/admin/module.routes.js";
 
 
-import { getUserStores } from "../middlewares/getUserStores.js";
+// import { getUserStores } from "../middlewares/getUserStores.js";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
@@ -50,10 +51,11 @@ router.use("/cart", cartRoutes);
 router.use("/admin/cms", CmsRoutes);
 /* ===================== PROTECTED ROUTES ===================== */
 // Apply auth + store-access middleware globally for admin routes
-router.use("/admin", authMiddleware, getUserStores);
+// router.use("/admin", authMiddleware, getUserStores);
 
 // Now all /admin/... routes automatically have req.user + req.allowedStores
 router.use("/admin/users", adminUserRoutes);
+router.use("/admin/modules",moduleRoutes );
 router.use("/admin/stores", storeRoutes);
 router.use("/admin/coupons", CouponRoutes);
 router.use("/admin/store-staff", staffRoutes);
@@ -61,7 +63,7 @@ router.use("/admin/categories", categoryRoutes);
 // router.use("/admin/payment", paymentRoutes);
 router.use("/admin/products", productRoutes);
 router.use("/admin/orders", adminOrderRoutes);
-router.use("/admin/permissions", permissionRoutes);
+router.use("/admin/module-permissions", permissionRoutes);
 router.use("/admin/roles", roleRoutes);
 router.use("/admin/customers", customerRoutes);
 

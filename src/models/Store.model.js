@@ -93,6 +93,6 @@ storeSchema.pre("save", async function (next) {
 });
 // storeSchema.index({ "address.location": "2dsphere" });
 
-storeSchema.index({ owner: 1 });
+storeSchema.index({ storeName: 1, owner: 1 }, { unique: true });
 
 export default mongoose.model("Store", storeSchema);

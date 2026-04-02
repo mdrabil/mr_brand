@@ -6,6 +6,7 @@ import Coupon from "../models/Coupon.model.js";
 import Joi from "joi";
 import { USER_ROLE, ORDER_STATUS } from "../constants/enums.js";
 import { generateRMId } from "../utils/rmId.js";
+import { buildStoreFilter, getUserStoreRole } from "../utils/accessHelper.js";
 
 // ================== Joi Validation ==================
 const createOrderSchema = Joi.object({
@@ -350,7 +351,8 @@ export const getOrderById = async (req, res) => {
 // ================== GET ALL ORDERS ==================
 export const getAllOrders = async (req, res) => {
   try {
-    const { user, allowedStores } = req;
+    const user = req.user;
+
 
     const {
       page = 1,
@@ -365,17 +367,29 @@ export const getAllOrders = async (req, res) => {
       deliveryEndDate,
     } = req.query;
 
-    const filter = {};
+       let filter = {};
 
-    // ===== Role Based Filter =====
-    if (!user.roles.includes(USER_ROLE.SUPER_ADMIN)) {
-      if (user.roles.includes(USER_ROLE.CUSTOMER)) filter.customer = user._id;
-      else filter.store = { $in: allowedStores };
+
+
+      const accessFilter = await buildStoreFilter(user, {
+  field: "store",
+  storeId: req.query.store
+});
+
+    // agar specific store bhi pass hua hai
+    if (store && store.trim() !== "") {
+      filter.store = store;
     }
+
+    // 🔥 MERGE BOTH (IMPORTANT)
+    filter = {
+      ...filter,
+      ...accessFilter,
+    };
 
     // ===== Optional Filters =====
     if (status && status.trim() !== "") filter.status = status;
-    if (store && store.trim() !== "") filter.store = store;
+
     if (customer && customer.trim() !== "") filter.customer = customer;
     if (category && category.trim() !== "") filter.category = category;
 
@@ -459,12 +473,22 @@ export const getAllOrders = async (req, res) => {
 // ================== DELETE ORDER ==================
 export const deleteOrder = async (req, res) => {
   try {
-    const { user, allowedStores } = req;
-    const order = await Order.findById(req.params.orderId);
+    const { user } = req;
+    const order = await Order.findById(req.params.orderId).select("store");
     if (!order) return res.status(404).json({ message: "Order not found" });
 
-    if (!user.roles.includes(USER_ROLE.SUPER_ADMIN) && !allowedStores.includes(order.store.toString()))
-      return res.status(403).json({ message: "Access denied" });
+      const role = await getUserStoreRole(req.user, order.store);
+
+    if (!role) {
+      return res.status(403).json({ message: "No access" });
+    }
+
+    if (!["OWNER", "MANAGER"].includes(role)) {
+      return res.status(403).json({
+        message: "Not allowed",
+      });
+    }
+
 
     await order.deleteOne();
     res.json({ success: true, message: "Order deleted successfully" });

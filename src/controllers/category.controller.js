@@ -162,7 +162,7 @@ export const updateCategory = async (req, res) => {
        ✅ CHECK DUPLICATE
     ============================ */
     const duplicate = await Category.findOne({
-      _id: { $ne: id },
+      _id: { $ne: categoryId },
       name,
       parentCategory
     });
@@ -186,7 +186,7 @@ export const updateCategory = async (req, res) => {
     /* ===========================
        ✅ UPDATE CATEGORY
     ============================ */
-    const updatedCategory = await Category.findByIdAndUpdate(id, updateData, {
+    const updatedCategory = await Category.findByIdAndUpdate(categoryId, updateData, {
       new: true,
       runValidators: true
     });

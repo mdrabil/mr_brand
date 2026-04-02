@@ -1,121 +1,3 @@
-// import ModulePermissionModel from "../models/ModulePermission.model.js";
-// import { USER_ROLE } from "../constants/enums.js";
-
-// /**
-//  * SUPER ADMIN BYPASS
-//  */
-// const superAdminBypass = (req) => {
-//   return req.user?.roles?.includes(USER_ROLE.SUPER_ADMIN);
-// };
-
-// /**
-//  * Permission Middleware
-//  */
-// export const checkPermission = (moduleKey, action) => {
-//   return async (req, res, next) => {
-//     try {
-//       // 🛡 SUPER ADMIN → FULL ACCESS
-//       if (superAdminBypass(req)) return next();
-
-//       const roles = req.user?.roles;
-
-//       if (!Array.isArray(roles) || roles.length === 0) {
-//         return res.status(403).json({ message: "No role assigned" });
-//       }
-
-//       const permission = await ModulePermissionModel.findOne({
-//         role: { $in: roles },
-//         moduleKey,
-//         [`permissions.${action}`]: true
-//       }).lean(); // ⚡ FAST
-
-//       if (!permission) {
-//         return res.status(403).json({
-//           message: "Permission denied"
-//         });
-//       }
-
-//       next();
-//     } catch (error) {
-//       console.error("Permission Error:", error);
-//       res.status(500).json({
-//         message: "Permission check failed"
-//       });
-//     }
-//   };
-// };
-
-
-
-// import ModulePermissionModel from "../models/ModulePermission.model.js";
-// import UserPermissionModel from "../models/UserPermission.model.js";
-// import { USER_ROLE } from "../constants/enums.js";
-
-// /**
-//  * SUPER ADMIN BYPASS
-//  */
-// const superAdminBypass = (req) => {
-//   return req.user?.roles?.includes(USER_ROLE.SUPER_ADMIN);
-// };
-
-// /**
-//  * Permission Middleware
-//  */
-// export const checkPermission = (moduleKey, action) => {
-//   return async (req, res, next) => {
-
-//     console.log('get the req',req.user)
-
-//     try {
-//       // 1️⃣ SUPER ADMIN → FULL ACCESS
-//       if (superAdminBypass(req)) return next();
-
-//       const userId = req.user?._id;
-//       const roles = req.user?.roles || [];
-
-//       if (!userId) {
-//         return res.status(401).json({ message: "Unauthenticated" });
-//       }
-
-//       /* --------------------------------------------------
-//        2️⃣ USER-SPECIFIC PERMISSION (OVERRIDE)
-//       -------------------------------------------------- */
-//       const userPermission = await UserPermissionModel.findOne({
-//         userId,
-//         moduleKey,
-//         [`permissions.${action}`]: true
-//       }).lean();
-
-//       if (userPermission) {
-//         return next(); // 🎯 special access granted
-//       }
-
-//       /* --------------------------------------------------
-//        3️⃣ ROLE-BASED PERMISSION
-//       -------------------------------------------------- */
-//       if (!Array.isArray(roles) || roles.length === 0) {
-//         return res.status(403).json({ message: "No role assigned" });
-//       }
-
-//       const rolePermission = await ModulePermissionModel.findOne({
-//         role: { $in: roles },
-//         moduleKey,
-//         [`permissions.${action}`]: true
-//       }).lean();
-
-//       if (!rolePermission) {
-//         return res.status(403).json({ message: "Permission denied" });
-//       }
-
-//       next();
-//     } catch (error) {
-//       console.error("Permission Error:", error);
-//       res.status(500).json({
-//         message: "Permission check failed"
-//       });
-//     }
-//   };
-// };
 
 
 
@@ -127,6 +9,8 @@ export const checkPermission = (moduleKey, action) => {
   return async (req, res, next) => {
     try {
       const user = req.user;
+      console.log("get userdata",user)
+         console.log("get the rolePrem",moduleKey)
       if (!user)
         return res.status(401).json({ success:false, message:"Unauthenticated" });
 
@@ -145,11 +29,14 @@ export const checkPermission = (moduleKey, action) => {
       if (userPerm) return next();
 
       /* 2️⃣ ROLE BASED PERMISSION */
+       console.log("get the rolePrem",moduleKey)
       const rolePerm = await ModulePermission.findOne({
         role: { $in: user.roleIds },
         moduleKey,
         [`permissions.${action}`]: true
       }).lean();
+
+      console.log("get the rolePrem",rolePerm)
 
       if (!rolePerm) {
         return res.status(403).json({

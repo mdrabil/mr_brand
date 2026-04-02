@@ -28,7 +28,7 @@ export const authMiddleware = async (req, res, next) => {
 
     /* ================= GET USER ================= */
     const user = await User.findById(decoded.userId)
-      .populate("roles", "name")
+      .populate("roles", "role")
       .select("-passwordHash -refreshToken")
       .lean();
 
@@ -48,7 +48,7 @@ export const authMiddleware = async (req, res, next) => {
 
     /* ================= ROLE VALIDATION ================= */
   const roleNames = (user.roles || []).map(r =>
-  r.name?.trim().toUpperCase()
+  r.role?.trim().toUpperCase()
 );
 
 const roleIds = user.roles?.map(r => r._id) || [];

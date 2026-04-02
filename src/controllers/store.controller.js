@@ -1,12 +1,15 @@
 import Store from "../models/Store.model.js";
 import Joi from "joi";
-import { STORE_STATUS, USER_ROLE } from "../constants/enums.js";
+import { STAFF_USER_ROLE, STORE_STATUS, USER_ROLE } from "../constants/enums.js";
 import StoreStaffModel from "../models/StoreStaff.model.js";
+import { buildStoreFilter } from "../utils/accessHelper.js";
+import UserModel from "../models/User.model.js";
 
 // Joi validation schemas
 // Joi validation schema
 const createStoreSchema = Joi.object({
   storeName: Joi.string().required(),
+   owner: Joi.string().optional(),
   status: Joi.string().valid("ACTIVE","INACTIVE","SUSPENDED"),
   address: Joi.object({
     fullAddress: Joi.string().required(),
@@ -34,6 +37,7 @@ const createStoreSchema = Joi.object({
 
 const updateStoreSchema = Joi.object({
   storeName: Joi.string(),
+
   address: Joi.object({
     fullAddress: Joi.string(),
     city: Joi.string(),
@@ -87,10 +91,7 @@ export const updateStoreOnly = async (req, res) => {
     const store = await Store.findById(storeId);
     if (!store) return res.status(404).json({ message: "Store not found" });
 
-    // Only owner or super admin can update
-    if (store.owner.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: "Unauthorized to update this store" });
-    }
+  
 
     // Update fields
     if (value.timing) store.timing = value.timing;
@@ -107,23 +108,86 @@ export const updateStoreOnly = async (req, res) => {
 
 
 
-// 🔹 Create Store
+
+
 export const createStore = async (req, res) => {
   try {
+
+    
     const { error, value } = createStoreSchema.validate(req.body);
-    if (error) return res.status(400).json({ message: error.details[0].message });
+    if (error) {
+      return res.status(400).json({
+        message: error.details[0].message
+      });
+    }
 
-    // Duplicate store check (same name + owner)
-    const existing = await Store.findOne({
-      storeName: value.storeName,
-      owner: req.user._id
+    
+    let ownerId;
+    
+    // 👑 SUPER ADMIN
+    if (req.user.roles.includes(USER_ROLE.SUPER_ADMIN)) {
+      ownerId = value.owner ? value?.owner : req.user._id;
+
+      if (!ownerId) {
+        return res.status(400).json({
+          message: "Owner is required for Super Admin"
+        });
+      }
+      
+      // ✅ check user exist
+      const userExists = await UserModel.findById(ownerId);
+      if (!userExists) {
+        return res.status(404).json({
+          message: "Owner user not found"
+        });
+      }
+    } 
+    // 👤 NORMAL USER
+    else {
+      ownerId = req.user._id;
+    }
+
+    // 🔐 security: owner remove from payload
+
+    delete value.owner;
+    const normalizedName = value.storeName.trim().toLowerCase();
+
+    // 🚫 duplicate check
+  const existing = await Store.findOne({
+  storeName: normalizedName,
+  owner: ownerId
+});
+
+    if (existing) {
+      return res.status(400).json({
+        message: "Store already exists for this owner"
+      });
+    }
+
+    // ✅ create store
+    const store = await Store.create({
+      ...value,
+      owner: ownerId
     });
-    if (existing) return res.status(400).json({ message: "Store already exists for this owner" });
 
-    const store = await Store.create({ ...value, owner: req.user._id });
-    res.status(201).json({ success: true, store });
+    // ✅ add in StoreStaff
+    await StoreStaffModel.create({
+      store: store._id,
+      user: ownerId,
+      role: STAFF_USER_ROLE.OWNER,
+      isActive: true
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Store created successfully",
+      store
+    });
+
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    return res.status(500).json({
+      message: err.message
+    });
   }
 };
 
@@ -132,14 +196,17 @@ export const updateStore = async (req, res) => {
   try {
     const { storeId } = req.params;
 
-    console.log("get the stroe id",storeId)
+   
     const { error, value } = updateStoreSchema.validate(req.body);
     if (error) return res.status(400).json({ message: error.details[0].message });
+
+    const normalizedName = value.storeName.trim().toLowerCase();
+
 
     // Duplicate check on name if changing
     if (value.storeName) {
       const duplicate = await Store.findOne({
-        storeName: value.storeName,
+        storeName: normalizedName,
         owner: req.user._id,
         _id: { $ne: storeId }
       });
@@ -225,50 +292,40 @@ export const getStoreById = async (req, res) => {
 
 // 🔹 Delete Store
 
-
 export const getAllStores = async (req, res) => {
   try {
-    const { page = 1, limit = 8, search, status } = req.query;
+    let { page = 1, limit = 8, search, status } = req.query;
 
+    page = Number(page);
+    limit = Number(limit);
+
+    // 🔹 NORMAL FILTER
     const filter = {};
-    if (search) filter.storeName = { $regex: search, $options: "i" };
-    if (status) filter.status = status;
 
-    const roles = req.user.roles; // ["SUPER_ADMIN"]
-console.log("FILTER:", filter);
-console.log("TOTAL STORES:", await Store.countDocuments());
-
-    let storeIds = null;
-
-    console.log("get the role",roles)
-
-    /* 🔥 SUPER ADMIN SEE ALL */
-    if (!roles.includes(USER_ROLE.SUPER_ADMIN)) {
-
-          console.log("trigre hua kya ")
-      const assignedStaff = await StoreStaffModel.find({ user: req.user._id })
-        .select("store")
-        .lean();
-
-      storeIds = assignedStaff.map(s => s.store);
-
-      if (!storeIds.length) {
-        return res.json({
-          success: true,
-          message: "No stores assigned",
-          total: 0,
-          page,
-          limit,
-          stores: [],
-        });
-      }
-
-      filter._id = { $in: storeIds };
+    if (search) {
+      filter.storeName = { $regex: search, $options: "i" };
     }
 
-    const total = await Store.countDocuments(filter);
+    if (status) {
+      filter.status = status;
+    }
+    // 🔥 ACCESS FILTER (ONLY THIS)
+    const accessFilter = await buildStoreFilter(req.user, {
+      field: "_id",
+      storeId: req.query.store // optional
+    });
 
-    const stores = await Store.find(filter)
+    // ✅ MERGE
+    const finalFilter = {
+      ...filter,
+      ...accessFilter
+    };
+    
+    console.log("get the data from frotnend ",finalFilter)
+    const total = await Store.countDocuments(finalFilter);
+   
+
+    const stores = await Store.find(finalFilter)
       .populate("owner", "fullName email phone")
       .skip((page - 1) * limit)
       .limit(limit)
@@ -277,7 +334,6 @@ console.log("TOTAL STORES:", await Store.countDocuments());
 
     return res.json({
       success: true,
-      message: "Stores fetched successfully",
       total,
       page,
       limit,
@@ -285,7 +341,7 @@ console.log("TOTAL STORES:", await Store.countDocuments());
     });
 
   } catch (err) {
-    console.error("GET STORES ERROR:", err);
+    console.error(err);
     return res.status(500).json({
       success: false,
       message: "Server error"

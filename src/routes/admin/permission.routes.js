@@ -1,22 +1,26 @@
 import express from "express";
 import {
+  getMyPermissions,
+  getAllPermissions,
   createOrUpdatePermission,
-  getPermissions,
   deletePermission,
-  getMe
-} from "../../controllers/permission.controller.js";
-
+} from "../../controllers/modulePermission.controller.js";
 import { authMiddleware } from "../../middlewares/auth.middleware.js";
-import { allowRoles } from "../../middlewares/role.middleware.js";
-import { USER_ROLE } from "../../constants/enums.js";
 
 const router = express.Router();
+
 router.use(authMiddleware);
 
-// Only SUPER_ADMIN can manage permissions
-router.post("/", allowRoles([USER_ROLE.SUPER_ADMIN]), createOrUpdatePermission);
-router.get("/", allowRoles([USER_ROLE.SUPER_ADMIN]), getPermissions);
-router.get("/me", getMe);
-router.delete("/:permissionId", allowRoles([USER_ROLE.SUPER_ADMIN]), deletePermission);
+// My permissions (any user)
+router.get("/me", getMyPermissions);
+
+// List all permissions (admin only)
+router.get("/", getAllPermissions);
+
+// Create / Update permission (admin only)
+router.post("/", createOrUpdatePermission);
+
+// Delete permission (admin only)
+// router.delete("/:id", deletePermission);
 
 export default router;

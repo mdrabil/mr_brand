@@ -8,7 +8,8 @@ import {
   getUserById,
   getAllUsers,
   deleteUser,
-  updateUserProfile
+  updateUserProfile,
+  toggleUserStatus
 } from "../../controllers/user.controller.js";
 
 import { checkPermission } from "../../middlewares/checkPermission.middleware.js";
@@ -20,9 +21,9 @@ const router = express.Router();
 
 // Create User → SUPER_ADMIN only
 router.post(
-  "/",
+  "/create",
   authMiddleware,
-   checkPermission(MODULE_KEY.USER, "create"),
+   checkPermission(MODULE_KEY.GLOBAL_USERS, "create"),
   createUser
 );
 
@@ -35,11 +36,19 @@ router.put(
 );
 
 // Update User → SUPER_ADMIN can update anyone, user can update self
-router.patch(
+router.put(
   "/:userId",
   authMiddleware,
-  checkPermission(MODULE_KEY.USER, "update"),
+  checkPermission(MODULE_KEY.GLOBAL_USERS, "update"),
   updateUser
+);
+
+
+router.patch(
+  "/:id/toggle-status",
+  authMiddleware,
+  checkPermission(MODULE_KEY.GLOBAL_USERS, "update"),
+  toggleUserStatus
 );
 
 // Get User → SUPER_ADMIN all, user can get self
@@ -53,7 +62,7 @@ router.get(
 router.get(
   "/",
   authMiddleware,
-checkPermission(MODULE_KEY.USER, "read"),
+checkPermission(MODULE_KEY.GLOBAL_USERS, "read"),
   getAllUsers
 );
 
@@ -61,7 +70,7 @@ checkPermission(MODULE_KEY.USER, "read"),
 router.delete(
   "/:userId",
   authMiddleware,
- checkPermission(MODULE_KEY.USER, "delete"),
+ checkPermission(MODULE_KEY.GLOBAL_USERS, "delete"),
   deleteUser
 );
 

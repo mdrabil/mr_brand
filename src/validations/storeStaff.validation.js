@@ -32,7 +32,6 @@ import { USER_ROLE } from "../constants/enums.js";
 
 export const createStaffSchema = Joi.object({
   store: Joi.string().required(),
-
   role: Joi.string()
     .valid(...Object.values(USER_ROLE))
     .required(),

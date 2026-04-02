@@ -1,7 +1,6 @@
 import express from "express";
 import { authMiddleware } from "../../middlewares/auth.middleware.js";
 
-import { storeAccessMiddleware } from "../../middlewares/storeAccess.middleware.js";
 
 import {
   createProduct,
@@ -22,8 +21,8 @@ const router = express.Router();
 router.post(
   "/create",
   authMiddleware,
- checkPermission(MODULE_KEY.PRODUCT,'create'),
-  storeAccessMiddleware(),
+ checkPermission(MODULE_KEY.PRODUCTS,'create'),
+ 
     // arrayImagesThumbnailsUpload("products", 10, 10),
     arrayImagesThumbnailsUpload(10, 10),
   createProduct
@@ -33,8 +32,8 @@ router.post(
 router.put(
   "/:productId",
   authMiddleware,
- checkPermission(MODULE_KEY.PRODUCT,'update'),
-  storeAccessMiddleware(),
+ checkPermission(MODULE_KEY.PRODUCTS,'update'),
+
     arrayImagesThumbnailsUpload(10, 10),
   updateProduct
 );
@@ -43,7 +42,7 @@ router.put(
 router.patch(
   "/:productId/status",
   authMiddleware, // attach user info
-   checkPermission(MODULE_KEY.PRODUCT,'update'),
+   checkPermission(MODULE_KEY.PRODUCTS,'update'),
   updateProductStatus
 );
 
@@ -53,8 +52,6 @@ router.patch(
 router.get(
   "/:productId",
   authMiddleware,
-  // checkPermission(MODULE_KEY.PRODUCT,'read'),
-  storeAccessMiddleware(),
   getProductById
 );
 
@@ -70,8 +67,8 @@ router.get(
 router.delete(
   "/:productId",
   authMiddleware,
- checkPermission(MODULE_KEY.PRODUCT,'delete'),
-  storeAccessMiddleware(),
+ checkPermission(MODULE_KEY.PRODUCTS,'delete'),
+
   deleteProduct
 );
 

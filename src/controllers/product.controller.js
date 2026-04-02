@@ -4,6 +4,7 @@ import Joi from "joi";
 import { USER_ROLE, PRODUCT_STATUS } from "../constants/enums.js";
 import cloudinary from "../config/cloudinaryConfig.js";
 import { generateProductSlug } from "../utils/rmId.js";
+import { buildStoreFilter } from "../utils/accessHelper.js";
 
 // 🔹 Joi Validation Schemas
 const createProductSchema = Joi.object({
@@ -537,8 +538,7 @@ export const updateProductStatus = async (req, res) => {
 
 export const getAllProducts = async (req, res) => {
   try {
-    // ================= Extract query/body params =================
-    const {
+    let {
       page = 1,
       limit = 20,
       store,
@@ -548,33 +548,17 @@ export const getAllProducts = async (req, res) => {
       search
     } = req.body;
 
-    const { allowedStores, user } = req;
+    page = Number(page);
+    limit = Number(limit);
 
-    let filter = {};
+    // 🔹 NORMAL FILTERS
+    const filter = {};
 
-        const totalproduct = await Product.countDocuments(filter);
-    console.log("get the allowsstore",allowedStores)
-    console.log("get the totalproduct",totalproduct)
-    // ================= Apply store access =================
-    if (!user.roles.includes("SUPER_ADMIN")) {
-      if (!allowedStores || allowedStores.length === 0) {
-        return res.status(403).json({
-          success: false,
-          message: "Access denied: No assigned stores"
-        });
-      }
-
-      // User can see only allowed stores
-      filter.store = { $in: allowedStores };
-    }
-
-    // ================= Optional filters =================
-    if (store) filter.store = store; // optional override for super admin
     if (category) filter.category = category;
     if (status) filter.status = status;
     if (name) filter.name = { $regex: name, $options: "i" };
 
-    // ================= Search across name & description =================
+    // 🔍 SEARCH
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: "i" } },
@@ -582,19 +566,30 @@ export const getAllProducts = async (req, res) => {
       ];
     }
 
-    // ================= Total count =================
-    const total = await Product.countDocuments(filter);
+    // 🔥 ACCESS FILTER (MAIN PART)
+    const accessFilter = await buildStoreFilter(req.user, {
+      field: "store",
+      storeId: store // 👈 optional
+    });
 
-    // ================= Products with pagination & populate =================
-    const products = await Product.find(filter)
-      .populate("store",) // include only necessary fields
+    // ✅ FINAL FILTER
+    const finalFilter = {
+      ...filter,
+      ...accessFilter
+    };
+
+    // ✅ TOTAL COUNT
+    const total = await Product.countDocuments(finalFilter);
+
+    // ✅ DATA
+    const products = await Product.find(finalFilter)
+      .populate("store")
       .populate("category", "name")
       .populate("subCategory", "name")
       .skip((page - 1) * limit)
       .limit(limit)
       .sort({ createdAt: -1 });
 
-    // ================= Response =================
     res.status(200).json({
       success: true,
       message: "Products fetched successfully",
@@ -608,7 +603,7 @@ export const getAllProducts = async (req, res) => {
     console.error("getAllProducts error:", err);
     res.status(500).json({
       success: false,
-      message: "Server error. Please try again later."
+      message: "Server error"
     });
   }
 };

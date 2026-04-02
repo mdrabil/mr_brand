@@ -1,41 +1,78 @@
+// // models/StoreStaff.model.js
+// import mongoose from "mongoose";
+// import { STAFF_USER_ROLE } from "../constants/enums.js";
+// import { generateRMId } from "../utils/rmId.js";
+
+// const storeStaffSchema = new mongoose.Schema(
+//   {
+//     rmStaffId: { type: String, unique: true, index: true },
+
+//   store: {
+//   type: mongoose.Schema.Types.ObjectId,
+//   ref: "Store",
+//   required: true
+// },
+
+
+//     user: {
+//       type: mongoose.Schema.Types.ObjectId,
+//       ref: "User",
+//       required: true,
+  
+//     },
+
+
+ 
+//    role: { type: String, enum: Object.values(STAFF_USER_ROLE), unique: true },
+
+//     isActive: { type: Boolean, default: true }
+//   },
+//   { timestamps: true }
+// );
+
+// // AUTO ID
+// storeStaffSchema.pre("save", async function (next) {
+//   if (!this.rmStaffId) {
+//     this.rmStaffId = await generateRMId("RMSTF");
+//   }
+//   next();
+// });
+
+// // UNIQUE store + user
+// storeStaffSchema.index(
+//   { store: 1, user: 1, role: 1 },
+//   { unique: true }
+// );
+
+// export default mongoose.model("StoreStaff", storeStaffSchema);
+
+
+
 // models/StoreStaff.model.js
 import mongoose from "mongoose";
-import { USER_ROLE } from "../constants/enums.js";
+import { STAFF_USER_ROLE } from "../constants/enums.js";
 import { generateRMId } from "../utils/rmId.js";
 
 const storeStaffSchema = new mongoose.Schema(
   {
     rmStaffId: { type: String, unique: true, index: true },
 
-  store: {
-  type: mongoose.Schema.Types.ObjectId,
-  ref: "Store",
-  required: true
-},
-
+    store: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Store",
+      required: true
+    },
 
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
-  
     },
 
-
- 
-    role: {
-      type: String,
-      enum: [
-        USER_ROLE.STORE_MANAGER,
-        USER_ROLE.RIDER,
-        USER_ROLE.CHEF,
-        USER_ROLE.STAFF,
-        USER_ROLE.AUTHOR,
-        USER_ROLE.SUPPORT,
-        USER_ROLE.DELIVERY_MANAGER,
-        
-      ],
-      required: true
+    role: { 
+      type: String, 
+      enum: Object.values(STAFF_USER_ROLE),
+      required: true,
     },
 
     isActive: { type: Boolean, default: true }
@@ -43,15 +80,42 @@ const storeStaffSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// AUTO ID
-storeStaffSchema.pre("save", async function (next) {
+/* ================= AUTO GENERATE RMID ================= */
+
+// For .save() / .create()
+storeStaffSchema.pre("save", async function(next) {
   if (!this.rmStaffId) {
     this.rmStaffId = await generateRMId("RMSTF");
   }
   next();
 });
 
-// UNIQUE store + user
-storeStaffSchema.index({ store: 1, user: 1 }, { unique: true });
+// For insertMany
+storeStaffSchema.pre("insertMany", async function(next, docs) {
+  for (let doc of docs) {
+    if (!doc.rmStaffId) {
+      doc.rmStaffId = await generateRMId("RMSTF");
+    }
+  }
+  next();
+});
+
+// For findOneAndUpdate with upsert
+storeStaffSchema.pre("findOneAndUpdate", async function(next) {
+  const update = this.getUpdate();
+  if (update && !update.rmStaffId) {
+    update.rmStaffId = await generateRMId("RMSTF");
+    this.setUpdate(update);
+  }
+  next();
+});
+
+/* ================= UNIQUE INDEX ================= */
+
+// Unique combination of store + user + role
+storeStaffSchema.index(
+  { store: 1, user: 1, role: 1 },
+  { unique: true }
+);
 
 export default mongoose.model("StoreStaff", storeStaffSchema);

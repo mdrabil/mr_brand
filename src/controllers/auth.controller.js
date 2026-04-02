@@ -232,6 +232,7 @@ if (error) return res.status(400).json({ message: error.details[0].message });
 //   }
 // }
 
+
 export const loginUser = async (req, res) => {
   try {
     const { mobile, password } = req.body;
@@ -243,9 +244,10 @@ export const loginUser = async (req, res) => {
       });
     }
 
+    // ✅ Get user with passwordHash + refreshToken
     const user = await User.findOne({ mobile })
       .select("+passwordHash +refreshToken")
-      .populate("roles", "name");
+      .populate("roles", "role"); // roles populate
 
     if (!user) {
       return res.status(401).json({
@@ -261,6 +263,7 @@ export const loginUser = async (req, res) => {
       });
     }
 
+    // ✅ Check password securely
     const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch) {
       return res.status(401).json({
@@ -269,28 +272,31 @@ export const loginUser = async (req, res) => {
       });
     }
 
-    const roleNames = user.roles.map(r => r.name);
+    // ✅ Get roles and check if SUPER_ADMIN
+    const roleNames = user.roles.map(r => r.role);
     const isSuperAdmin = roleNames.includes("SUPER_ADMIN");
 
+    // ✅ Generate tokens
     const tokens = generateToken({
       userId: user._id,
       roles: roleNames,
-      isSuperAdmin, // 🔥 IMPORTANT
+      isSuperAdmin,
     });
 
+    // ✅ Update refreshToken and lastLoginAt in DB
     user.refreshToken = tokens.refreshToken;
     user.lastLoginAt = new Date();
-    await user.save();
+    await user.save(); // mongoose document -> safe
 
+    // ✅ Response
     return res.status(200).json({
       success: true,
       message: "Login successful",
       user: {
         _id: user._id,
         fullName: user.fullName,
-        image: user.image,
+        dp: user.dp?.url || null,
         mobile: user.mobile,
-        dp:user.dp?.url,
         email: user.email,
         roles: roleNames,
         isSuperAdmin,

@@ -1,7 +1,5 @@
 import express from "express";
 
-import { storeAccessMiddleware } from "../../middlewares/storeAccess.middleware.js";
-
 import {
   createOrder,
   updateOrder,
@@ -9,12 +7,15 @@ import {
   getAllOrders,
   deleteOrder
 } from "../../controllers/order.controller.js";
+import { authMiddleware } from "../../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
 
 // Customer → place order
-router.get("/", getAllOrders);
+router.get("/",authMiddleware, getAllOrders);
+
+
 router.post("/",  createOrder);
 
 // Get all orders → role-wise
@@ -25,6 +26,6 @@ router.get("/:orderId", getOrderById);
 router.patch("/:orderId/status", updateOrder);
 
 // Delete order → SUPER_ADMIN / Store Roles
-router.delete("/:orderId", storeAccessMiddleware(), deleteOrder);
+router.delete("/:orderId",authMiddleware, deleteOrder);
 
 export default router;

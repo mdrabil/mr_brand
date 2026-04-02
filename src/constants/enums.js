@@ -7,29 +7,50 @@
 //   CHEF: "CHEF"
 // });
 
+// export const USER_ROLE = Object.freeze({
+//   // 🔐 SYSTEM
+//   SUPER_ADMIN: "SUPER_ADMIN",     // Full system access
+//   USER: "USER",     // Full system access
+//   ADMIN: "ADMIN",                 // Platform admin (optional future)
+
+//   // 🏪 STORE LEVEL
+//   VENDOR: "VENDOR",               // Store owner
+//   // STORE_MANAGER: "STORE_MANAGER", // Manages store ops
+//   // STAFF: "STAFF",                 // Store staff (billing, packing)
+//   // CHEF: "CHEF",                   // Kitchen staff
+// AUTHOR:"AUTHOR",
+//   // 🚚 DELIVERY
+//   RIDER: "RIDER",                 // Delivery partner
+//   DELIVERY_MANAGER: "DELIVERY_MANAGER", // Future ops control
+
+//   // 👤 CUSTOMER
+//   // CUSTOMER: "CUSTOMER",           // End user
+
+//   // 📞 SUPPORT
+//   SUPPORT: "SUPPORT"              // Customer support agent
+// });
+
 export const USER_ROLE = Object.freeze({
-  // 🔐 SYSTEM
-  SUPER_ADMIN: "SUPER_ADMIN",     // Full system access
-  USER: "USER",     // Full system access
-  ADMIN: "ADMIN",                 // Platform admin (optional future)
+  SUPER_ADMIN: "SUPER_ADMIN",
+  ADMIN: "ADMIN",
+  USER: "USER",
 
-  // 🏪 STORE LEVEL
-  VENDOR: "VENDOR",               // Store owner
-  STORE_MANAGER: "STORE_MANAGER", // Manages store ops
-  STAFF: "STAFF",                 // Store staff (billing, packing)
-  CHEF: "CHEF",                   // Kitchen staff
-AUTHOR:"AUTHOR",
-  // 🚚 DELIVERY
-  RIDER: "RIDER",                 // Delivery partner
-  DELIVERY_MANAGER: "DELIVERY_MANAGER", // Future ops control
-
-  // 👤 CUSTOMER
-  CUSTOMER: "CUSTOMER",           // End user
-
-  // 📞 SUPPORT
-  SUPPORT: "SUPPORT"              // Customer support agent
+  GLOBAL_SUPPORT: "GLOBAL_SUPPORT", // system support
+  VENDOR: "VENDOR",                 // seller / store owner
+  SALES_ADMIN: "SALES_ADMIN",       // sales team (global)
 });
 
+export const STAFF_USER_ROLE = Object.freeze({
+  STORE_MANAGER: "STORE_MANAGER",
+  OWNER:"OWNER",
+  STAFF: "STAFF",
+  CHEF: "CHEF",
+  RIDER: "RIDER",
+  DELIVERY_MANAGER: "DELIVERY_MANAGER",
+
+  STORE_SUPPORT: "STORE_SUPPORT", // store support
+  SALES_EXECUTIVE: "SALES_EXECUTIVE", // store level sales
+});
 
 export const STATUS  = Object.freeze({
   ACTIVE: "ACTIVE",
@@ -84,77 +105,96 @@ export const PRODUCT_STATUS = Object.freeze({
   DISABLED: "DISABLED"
 });
 
-
-
 export const MODULE_KEY = Object.freeze({
-  /* ---------------- DASHBOARD ---------------- */
-  DASHBOARD: "DASHBOARD",
+  DASHBOARD: 'DASHBOARD',
+  PRODUCTS: 'PRODUCTS',
+  ORDERS: 'ORDERS',
+  STORES: 'STORES',
+  BLOGS: 'BLOGS',
+  WEBSITES: 'WEBSITES',
+  ROLES: 'ROLES',
+  CART: 'CART',
+  JOBS: 'JOBS',
+  PAYMENTS: 'PAYMENTS',
+  CATEGORIES: 'CATEGORIES',
+  TESTIMONIALS: 'TESTIMONIALS',
+  CUSTOMERS: 'CUSTOMERS',
+  COUPONS: 'COUPONS',
+  USERS_STAFF: 'USERS_STAFF',
+  GLOBAL_USERS: 'GLOBAL_USERS',
+  SETTINGS: 'SETTINGS',
+  PAGE404: 'PAGE404',
+});
 
-  /* ---------------- USER & ACCESS ---------------- */
-  USER: "USER",
-  ROLE: "ROLE",
-  PERMISSION: "PERMISSION",
-  STAFF: "STAFF",
+// export const MODULE_KEY = Object.freeze({
+//   /* ---------------- DASHBOARD ---------------- */
+//   DASHBOARD: "DASHBOARD",
 
-    CUSTOMER: "CUSTOMER",
-  CART: "CART",
-  WISHLIST: "WISHLIST",
+//   /* ---------------- USER & ACCESS ---------------- */
+//   USER: "USER",
+//   ROLE: "ROLE",
+//   PERMISSION: "PERMISSION",
+//   STAFF: "STAFF",
+
+//     CUSTOMER: "CUSTOMER",
+//   CART: "CART",
+//   WISHLIST: "WISHLIST",
  
 
-  /* ---------------- STORE ---------------- */
-  STORE: "STORE",
-  STORE_TIMING: "STORE_TIMING",
-  STORE_STAFF: "STORE_STAFF",
-  AUTHOR: "AUTHOR",
-  STORE_DOCUMENT: "STORE_DOCUMENT",
-  STORE_PAYOUT: "STORE_PAYOUT",
+//   /* ---------------- STORE ---------------- */
+//   STORE: "STORE",
+//   STORE_TIMING: "STORE_TIMING",
+//   STORE_STAFF: "STORE_STAFF",
+//   AUTHOR: "AUTHOR",
+//   STORE_DOCUMENT: "STORE_DOCUMENT",
+//   STORE_PAYOUT: "STORE_PAYOUT",
 
-  /* ---------------- CATALOG ---------------- */
-  CATEGORY: "CATEGORY",
-  SUB_CATEGORY: "SUB_CATEGORY",
-  BRAND: "BRAND",
-  PRODUCT: "PRODUCT",
-  PRODUCT_VARIANT: "PRODUCT_VARIANT",
-  PRODUCT_STOCK: "PRODUCT_STOCK",
-  PRODUCT_REVIEW: "PRODUCT_REVIEW",
+//   /* ---------------- CATALOG ---------------- */
+//   CATEGORY: "CATEGORY",
+//   SUB_CATEGORY: "SUB_CATEGORY",
+//   BRAND: "BRAND",
+//   PRODUCT: "PRODUCT",
+//   PRODUCT_VARIANT: "PRODUCT_VARIANT",
+//   PRODUCT_STOCK: "PRODUCT_STOCK",
+//   PRODUCT_REVIEW: "PRODUCT_REVIEW",
 
-  /* ---------------- ORDER ---------------- */
-  ORDER: "ORDER",
-  ORDER_ITEM: "ORDER_ITEM",
-  ORDER_TRACKING: "ORDER_TRACKING",
-  CART: "CART",
+//   /* ---------------- ORDER ---------------- */
+//   ORDER: "ORDER",
+//   ORDER_ITEM: "ORDER_ITEM",
+//   ORDER_TRACKING: "ORDER_TRACKING",
+//   CART: "CART",
 
-  /* ---------------- DELIVERY ---------------- */
-  DELIVERY: "DELIVERY",
-  RIDER: "RIDER",
-  RIDER_PAYOUT: "RIDER_PAYOUT",
-  DELIVERY_ZONE: "DELIVERY_ZONE",
+//   /* ---------------- DELIVERY ---------------- */
+//   DELIVERY: "DELIVERY",
+//   RIDER: "RIDER",
+//   RIDER_PAYOUT: "RIDER_PAYOUT",
+//   DELIVERY_ZONE: "DELIVERY_ZONE",
 
-  /* ---------------- PAYMENT ---------------- */
-  PAYMENT: "PAYMENT",
-  PAYMENT_METHOD: "PAYMENT_METHOD",
-  REFUND: "REFUND",
-  WALLET: "WALLET",
-  COMMISSION: "COMMISSION",
+//   /* ---------------- PAYMENT ---------------- */
+//   PAYMENT: "PAYMENT",
+//   PAYMENT_METHOD: "PAYMENT_METHOD",
+//   REFUND: "REFUND",
+//   WALLET: "WALLET",
+//   COMMISSION: "COMMISSION",
 
-  /* ---------------- PROMOTION ---------------- */
-  COUPON: "COUPON",
-  OFFER: "OFFER",
-  BANNER: "BANNER",
+//   /* ---------------- PROMOTION ---------------- */
+//   COUPON: "COUPON",
+//   OFFER: "OFFER",
+//   BANNER: "BANNER",
 
-  /* ---------------- REPORT & ANALYTICS ---------------- */
-  REPORT: "REPORT",
-  ANALYTICS: "ANALYTICS",
+//   /* ---------------- REPORT & ANALYTICS ---------------- */
+//   REPORT: "REPORT",
+//   ANALYTICS: "ANALYTICS",
 
-  /* ---------------- SUPPORT ---------------- */
-  SUPPORT_TICKET: "SUPPORT_TICKET",
-  CHAT: "CHAT",
+//   /* ---------------- SUPPORT ---------------- */
+//   SUPPORT_TICKET: "SUPPORT_TICKET",
+//   CHAT: "CHAT",
 
-  /* ---------------- SYSTEM ---------------- */
-  NOTIFICATION: "NOTIFICATION",
-  SETTING: "SETTING",
-  AUDIT_LOG: "AUDIT_LOG"
-});
+//   /* ---------------- SYSTEM ---------------- */
+//   NOTIFICATION: "NOTIFICATION",
+//   SETTING: "SETTING",
+//   AUDIT_LOG: "AUDIT_LOG"
+// });
 
 
 // export const MODULE_KEY = Object.freeze({

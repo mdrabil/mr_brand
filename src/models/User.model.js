@@ -26,7 +26,7 @@ const userSchema = new mongoose.Schema(
  🔥 AUTO RM ID (ASYNC SAFE)
 -------------------------------------------------- */
 userSchema.pre("save", async function (next) {
-  if (!this.rmId) this.rmId = await generateRMId("RMU");
+  if (!this.rmId) this.rmId = await generateRMId("USR","USER");
   next();
 });
 
@@ -36,6 +36,16 @@ userSchema.index({
   mobile: "text",
   email: "text"
 });
+
+userSchema.index(
+  { roles: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      roles: { $exists: true }
+    }
+  }
+);
 
 
 

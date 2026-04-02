@@ -4,78 +4,143 @@ import bcrypt from "bcryptjs";
 import { USER_ROLE } from "../constants/enums.js";
 import RoleModel from "../models/Role.model.js";
 import cloudinary from "../config/cloudinaryConfig.js";
+import { sendEmail } from "../constants/mailer.js";
 
 // 🔹 Joi validation schemas
 const createUserSchema = Joi.object({
   fullName: Joi.string().required(),
   mobile: Joi.string().pattern(/^[0-9]{10}$/).required(),
-  email: Joi.string().email(),
-  password: Joi.string().min(6).required(),
-  roles: Joi.array().items(Joi.string().valid(...Object.values(USER_ROLE))).required()
+  email: Joi.string().email().required(),
+  roles: Joi.array().items(Joi.string()).required(), // IDs sent from frontend
 });
 
-const updateUserSchema = Joi.object({
+
+export const updateUserSchema = Joi.object({
   fullName: Joi.string(),
   mobile: Joi.string().pattern(/^[0-9]{10}$/),
   email: Joi.string().email(),
-  password: Joi.string().min(6),
-  roles: Joi.array().items(Joi.string().valid(...Object.values(USER_ROLE))),
-  isBlocked: Joi.boolean()
+  roles: Joi.array().items(Joi.string()),
+  isBlocked: Joi.boolean(),
+  password: Joi.string().optional(),
 }).min(1);
 
-// 🔹 Create User
+
+   const generatePassword = () => {
+      const numbers = Math.floor(10000 + Math.random() * 90000);
+      return `RM${numbers}R`;
+    };
+// 🔹 Create User with role validation
 export const createUser = async (req, res) => {
   try {
+    // 1️⃣ Validate request body
     const { error, value } = createUserSchema.validate(req.body);
-    if (error) return res.status(400).json({ message: error.details[0].message });
+    if (error) return res.status(400).json({ success: false, message: error.details[0].message });
 
-    // Duplicate mobile/email check
-    const duplicate = await User.findOne({
-      $or: [{ mobile: value.mobile }, { email: value.email }]
+    const { fullName, mobile, email, roles: roleIds } = value;
+
+    // 2️⃣ Check duplicate mobile/email
+    const duplicate = await User.findOne({ $or: [{ mobile }, { email }] });
+    if (duplicate) return res.status(400).json({ success: false, message: "Mobile or Email already exists" });
+
+    // 3️⃣ Validate each role ID exists in Role collection
+    const roles = await RoleModel.find({ _id: { $in: roleIds }, isActive: true });
+
+    if (!roles || roles.length === 0) {
+      return res.status(400).json({ success: false, message: "At least one valid role is required" });
+    }
+
+    if (roles.length !== roleIds.length) {
+      return res.status(400).json({ success: false, message: "Some role IDs are invalid" });
+    }
+
+    // 4️⃣ Generate random password
+    const plainPassword = generatePassword();
+
+    // 5️⃣ Hash password
+    const passwordHash = await bcrypt.hash(plainPassword, 10);
+
+    // 6️⃣ Create user
+    const user = await User.create({
+      fullName,
+      mobile,
+      email,
+      roles: roles.map(r => r._id), // only valid role IDs
+      passwordHash,
     });
-    if (duplicate) return res.status(400).json({ message: "Mobile or Email already exists" });
 
-    // Hash password
-    const passwordHash = await bcrypt.hash(value.password, 10);
+    // 7️⃣ Send email asynchronously
+    setImmediate(() => {
+      sendEmail(
+        email,
+        "Your Account Created",
+        `Hello ${fullName},\n\nYour account has been created successfully.\n\nEmail: ${email}\nPassword: ${plainPassword}\n\nPlease change your password after first login.`
+      );
+    });
 
-    const user = await User.create({ ...value, passwordHash });
     res.status(201).json({ success: true, user });
+
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error(err);
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// 🔹 Update User
+// 🔹 Joi schema for updating user
+
+
+// 🔹 Update user controller
 export const updateUser = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { error, value } = updateUserSchema.validate(req.body);
-    if (error) return res.status(400).json({ message: error.details[0].message });
 
-    // Password hashing if updating
+    // 1️⃣ Validate body
+    const { error, value } = updateUserSchema.validate(req.body);
+    if (error)
+      return res.status(400).json({ success: false, message: error.details[0].message });
+
+    // 2️⃣ Password hashing if updating password
     if (value.password) {
       value.passwordHash = await bcrypt.hash(value.password, 10);
       delete value.password;
     }
 
-    // Duplicate mobile/email check
+    // 3️⃣ Duplicate mobile/email check
     if (value.mobile || value.email) {
       const duplicate = await User.findOne({
         _id: { $ne: userId },
         $or: [
           value.mobile ? { mobile: value.mobile } : null,
-          value.email ? { email: value.email } : null
-        ].filter(Boolean)
+          value.email ? { email: value.email } : null,
+        ].filter(Boolean),
       });
-      if (duplicate) return res.status(400).json({ message: "Mobile or Email already exists" });
+      if (duplicate)
+        return res
+          .status(400)
+          .json({ success: false, message: "Mobile or Email already exists" });
     }
 
-    const user = await User.findByIdAndUpdate(userId, value, { new: true });
-    if (!user) return res.status(404).json({ message: "User not found" });
+    // 4️⃣ Validate role IDs exist in Role collection
+    if (value.roles) {
+      const roles = await RoleModel.find({ _id: { $in: value.roles }, isActive: true });
+      if (roles.length !== value.roles.length) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Some role IDs are invalid" });
+      }
+    }
+
+    // 5️⃣ Update user
+    const user = await User.findByIdAndUpdate(userId, value, { new: true })
+      .select("-passwordHash -refreshToken")
+      .populate({ path: "roles", select: "name" });
+
+    if (!user)
+      return res.status(404).json({ success: false, message: "User not found" });
 
     res.json({ success: true, user });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("UPDATE USER ERROR:", err);
+    res.status(500).json({ success: false, message: "Server error. Try again later." });
   }
 };
 
@@ -99,30 +164,28 @@ export const getUserById = async (req, res) => {
 };
 
 
+
+// 🔹 Get All Users (Paginated, Search, Exclude Admins)
 export const getAllUsers = async (req, res) => {
   try {
-    // Only SUPER_ADMIN can list users
-    const roleNames = req.user.roles;
-    // if (!roleNames.includes(USER_ROLE.SUPER_ADMIN)) {
-    //   return res.status(403).json({ success: false, message: "Access denied" });
-    // }
-
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const search = req.query.search || "";
 
-    // 🔥 Get ADMIN & SUPER_ADMIN role IDs
+    // 🔹 Get ADMIN & SUPER_ADMIN role IDs
     const adminRoles = await RoleModel.find({
-      name: { $in: [USER_ROLE.SUPER_ADMIN, USER_ROLE.ADMIN] }
+      role: { $in: [USER_ROLE.SUPER_ADMIN] },
+      isActive: true,
     }).select("_id");
 
-    const adminRoleIds = adminRoles.map(r => r._id);
+    const adminRoleIds = adminRoles.map((r) => r._id);
 
-    // 🔍 Search filter
+    // 🔹 Filter: exclude admin users
     const filter = {
-      roles: { $nin: adminRoleIds }, // 🚫 Exclude admin users
+      roles: { $nin: adminRoleIds },
     };
 
+    // 🔹 Search filter
     if (search) {
       filter.$or = [
         { fullName: { $regex: search, $options: "i" } },
@@ -131,10 +194,16 @@ export const getAllUsers = async (req, res) => {
       ];
     }
 
+    // 🔹 Total count for pagination
     const total = await User.countDocuments(filter);
 
+    // 🔹 Fetch users with roles populated
     const users = await User.find(filter)
       .select("-passwordHash -refreshToken")
+      .populate({
+        path: "roles",
+        select: "role", // return only role name
+      })
       .skip((page - 1) * limit)
       .limit(limit)
       .sort({ createdAt: -1 });
@@ -148,7 +217,9 @@ export const getAllUsers = async (req, res) => {
     });
   } catch (err) {
     console.error("GET ALL USERS ERROR:", err);
-    res.status(500).json({ success: false, message: "Server error. Try again later." });
+    res
+      .status(500)
+      .json({ success: false, message: "Server error. Try again later." });
   }
 };
 
@@ -273,5 +344,42 @@ export const deleteUser = async (req, res) => {
     res.json({ success: true, message: "User deleted" });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+
+
+// controllers/user.controller.js
+
+export const toggleUserStatus = async (req, res) => {
+  try {
+    const userId = req.params.id;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    // Toggle the isBlocked status
+    user.isBlocked = !user.isBlocked;
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: `User has been ${user.isBlocked ? "blocked" : "unblocked"}`,
+      user: {
+        _id: user._id,
+        fullName: user.fullName,
+        isBlocked: user.isBlocked,
+      },
+    });
+
+  } catch (err) {
+    console.error("TOGGLE STATUS ERROR:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error. Could not toggle status",
+    });
   }
 };
