@@ -7,13 +7,9 @@ import ModuleModel from "../models/Module.model.js";
 import ModulePermissionModel from "../models/ModulePermission.model.js";
 
 import { USER_ROLE, MODULE_KEY } from "../constants/enums.js";
+import { config } from "../config/config.js";
 
-const SUPER_ADMIN_DATA = {
-  fullName: "Super Admin",
-  mobile: "9999999999",
-  email: "admin@system.com",
-  password: "Admin@123",
-};
+
 
 export const runInitialSeeder = async () => {
   console.log("🌱 Seeder Started...");
@@ -47,12 +43,12 @@ export const runInitialSeeder = async () => {
   });
 
   if (!superAdmin) {
-    const passwordHash = await bcrypt.hash(SUPER_ADMIN_DATA.password, 12);
+    const passwordHash = await bcrypt.hash(config.password, 12);
 
     superAdmin = await UserModel.create({
-      fullName: SUPER_ADMIN_DATA.fullName,
-      mobile: SUPER_ADMIN_DATA.mobile,
-      email: SUPER_ADMIN_DATA.email,
+      fullName: config.fullName,
+      mobile: config.mobile,
+      email: config.email,
       passwordHash,
       roles: [roleDocs[USER_ROLE.SUPER_ADMIN]._id],
       isBlocked: false,

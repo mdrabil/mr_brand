@@ -1,21 +1,3 @@
-// import dotenv from "dotenv";
-
-// dotenv.config();
-
-// if (!process.env.MONGO_URI) {
-//   throw new Error("❌ MONGO_URI is not defined in environment variables");
-// }
-
-// export const config = {
-//   port: Number(process.env.PORT) ,
-//   mongoURI: process.env.MONGO_URI,
-// jwtSecret: process.env.JWT_SECRET,
-//   jwtRefreshSecret: process.env.JWT_REFRESH_SECRET,
-//   jwtExpiresIn: "7d",        
-//   jwtRefreshExpiresIn: "7d", // 7 days
-
-//   bcryptSaltRounds: Number(process.env.BCRYPT_SALT) || 12,
-// };
 
 
 
@@ -49,4 +31,10 @@ export const config = {
   cloudName: process.env.CLOUD_NAME,
   cloudinaryApiKey: process.env.CLOUDINARY_API_KEY,
   cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET,
+
+    fullName: process.env.SUPER_ADMIN_NAME,
+  email: process.env.SUPER_ADMIN_EMAIL,
+  mobile: process.env.SUPER_ADMIN_MOBILE,
+  password: process.env.SUPER_ADMIN_PASSWORD ,
+
 };
