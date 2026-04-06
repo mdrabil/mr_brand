@@ -135,56 +135,32 @@ export const createOrder = async (req, res) => {
   }
 };
 
-// ================== UPDATE ORDER ==================
 export const updateOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { user, allowedStores } = req;
 
-    console.log("orderId",orderId)
+    console.log("req user",req.user)
 
+    // Validate request body — sirf status hi allowed
     const { error, value } = updateOrderSchema.validate(req.body);
     if (error) return res.status(400).json({ message: error.details[0].message });
 
+    // Find order
     const order = await Order.findById(orderId);
     if (!order) return res.status(404).json({ message: "Order not found" });
 
-    // Role-based access
-    // const isCustomerOwner = user.roles.includes(USER_ROLE.CUSTOMER) && order.customer.toString() === user._id.toString();
-    // const hasStoreAccess = allowedStores.includes(order.store.toString());
-    // if (!user.roles.includes(USER_ROLE.SUPER_ADMIN) && !isCustomerOwner && !hasStoreAccess)
-    //   return res.status(403).json({ message: "Access denied" });
+    // Check if user belongs to the store or has FULL_ACCESS
+    const role = await getUserStoreRole(req.user, order.store);
+    if (!role) return res.status(403).json({ message: "No access" });
 
-    const isSuperAdmin = user.roles.includes(USER_ROLE.SUPER_ADMIN);
-const isCustomerOwner =
-  user.roles.includes(USER_ROLE.CUSTOMER) &&
-  order.customer.toString() === user._id.toString();
-
-const hasStoreAccess = allowedStores?.includes(order.store.toString());
-
-if (!isSuperAdmin && !isCustomerOwner && !hasStoreAccess) {
-  return res.status(403).json({ message: "Access denied" });
-}
-
-
-    // Optional coupon update
-    // if (value.couponCode) {
-    //   const coupon = await Coupon.findOne({ code: value.couponCode.toUpperCase(), status: "ACTIVE" });
-    //   if (!coupon) return res.status(400).json({ message: "Invalid or inactive coupon" });
-    //   order.couponCode = coupon.code;
-    // }
-
-    if (value.couponCode) {
-  const coupon = await Coupon.findOne({ code: value.couponCode.toUpperCase(), status: "ACTIVE" });
-  if (!coupon) return res.status(400).json({ message: "Invalid or inactive coupon" });
-  order.couponCode = coupon.code;
-}
-
-
+    // Update only status
     if (value.status) order.status = value.status;
+    else return res.status(400).json({ message: "Status is required" });
 
     await order.save();
+
     res.json({ success: true, order });
+
   } catch (err) {
     console.error("updateOrder:", err);
     res.status(500).json({ message: "Server error" });
@@ -473,22 +449,19 @@ export const getAllOrders = async (req, res) => {
 // ================== DELETE ORDER ==================
 export const deleteOrder = async (req, res) => {
   try {
-    const { user } = req;
     const order = await Order.findById(req.params.orderId).select("store");
     if (!order) return res.status(404).json({ message: "Order not found" });
 
-      const role = await getUserStoreRole(req.user, order.store);
+    const role = await getUserStoreRole(req.user, order.store);
 
-    if (!role) {
+    if (!role) { 
       return res.status(403).json({ message: "No access" });
     }
 
-    if (!["OWNER", "MANAGER"].includes(role)) {
-      return res.status(403).json({
-        message: "Not allowed",
-      });
+    // Allow FULL_ACCESS too
+    if (!["OWNER", "MANAGER", "FULL_ACCESS"].includes(role)) {
+      return res.status(403).json({ message: "Not allowed" });
     }
-
 
     await order.deleteOne();
     res.json({ success: true, message: "Order deleted successfully" });

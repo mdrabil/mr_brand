@@ -92,6 +92,7 @@ export const buildStoreFilter = async (user, options = {}) => {
 
 // 🔥 SINGLE STORE ROLE CHECK (ULTRA FAST)
 export const getUserStoreRole = async (user, storeId) => {
+  console.log("user Data",user)
   if (user.roles.some(r => BYPASS.includes(r))) return "FULL_ACCESS";
 
   // OWNER

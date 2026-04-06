@@ -276,12 +276,16 @@ export const loginUser = async (req, res) => {
     const roleNames = user.roles.map(r => r.role);
     const isSuperAdmin = roleNames.includes("SUPER_ADMIN");
 
+  
+
     // ✅ Generate tokens
     const tokens = generateToken({
       userId: user._id,
       roles: roleNames,
       isSuperAdmin,
     });
+
+
 
     // ✅ Update refreshToken and lastLoginAt in DB
     user.refreshToken = tokens.refreshToken;

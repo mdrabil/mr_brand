@@ -21,9 +21,9 @@ router.post("/",  createOrder);
 // Get all orders → role-wise
 
 // Get order by ID → role-wise
-router.get("/:orderId", getOrderById);
+router.get("/:orderId",authMiddleware, getOrderById);
 
-router.patch("/:orderId/status", updateOrder);
+router.patch("/:orderId/status",authMiddleware, updateOrder);
 
 // Delete order → SUPER_ADMIN / Store Roles
 router.delete("/:orderId",authMiddleware, deleteOrder);

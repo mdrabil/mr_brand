@@ -51,6 +51,8 @@ export const authMiddleware = async (req, res, next) => {
   r.role?.trim().toUpperCase()
 );
 
+console.log("get the rolesname in auth",roleNames)
+
 const roleIds = user.roles?.map(r => r._id) || [];
 
 if (!roleNames.length) {
