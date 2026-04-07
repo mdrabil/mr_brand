@@ -47,9 +47,10 @@ export const STAFF_USER_ROLE = Object.freeze({
   CHEF: "CHEF",
   RIDER: "RIDER",
   DELIVERY_MANAGER: "DELIVERY_MANAGER",
+    STORE_AUTHOR: "STORE_AUTHOR",
 
-  STORE_SUPPORT: "STORE_SUPPORT", // store support
-  SALES_EXECUTIVE: "SALES_EXECUTIVE", // store level sales
+  STORE_SUPPORT: "STORE_SUPPORT",
+  SALES_EXECUTIVE: "SALES_EXECUTIVE", 
 });
 
 export const STATUS  = Object.freeze({
