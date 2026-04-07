@@ -575,7 +575,7 @@ if (status && typeof status === "string" && status.trim() !== "") {
     // ================= QUERY =================
     const [orders, total] = await Promise.all([
       Order.find(filter)
-        .populate("store", "name")
+        // .populate("store", "name")
         .sort(sortOptions)
         .skip(skip)
         .limit(pageSize)
