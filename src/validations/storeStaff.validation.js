@@ -1,6 +1,6 @@
 // validations/storeStaff.validation.js
 import Joi from "joi";
-import { STAFF_USER_ROLE } from "../constants/enums.js";
+import { STAFF_USER_ROLE, USER_ROLE } from "../constants/enums.js";
 
 // export const createStaffSchema = Joi.object({
 //   store: Joi.string().required(),

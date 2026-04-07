@@ -9,8 +9,8 @@ export const checkPermission = (moduleKey, action) => {
   return async (req, res, next) => {
     try {
       const user = req.user;
-      console.log("get userdata",user)
-         console.log("get the rolePrem",moduleKey)
+      // console.log("get userdata",user)
+      //    console.log("get the rolePrem",moduleKey)
       if (!user)
         return res.status(401).json({ success:false, message:"Unauthenticated" });
 

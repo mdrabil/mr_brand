@@ -11,10 +11,10 @@ const router = express.Router();
 router.use(authMiddleware);
 
 // Only SUPER_ADMIN and store owner can manage staff
-router.post("/", checkPermission(MODULE_KEY.USERS_STAFF, "create"), createStoreStaff);
-router.put("/:id", checkPermission(MODULE_KEY.USERS_STAFF, "update"), updateStoreStaff);
-router.get("/", checkPermission(MODULE_KEY.USERS_STAFF, "read"), getAllStoreStaff);
-router.delete("/:id",checkPermission(MODULE_KEY.USERS_STAFF, "delete"), deleteStoreStaff);
-router.put("/:id/status-update",checkPermission(MODULE_KEY.USERS_STAFF, "delete"), updateStoreStaffIsAcitveInActive);
+router.post("/", checkPermission(MODULE_KEY.USERS_STAFF, "create"),authMiddleware, createStoreStaff);
+router.put("/:id", checkPermission(MODULE_KEY.USERS_STAFF, "update"),authMiddleware, updateStoreStaff);
+router.get("/", checkPermission(MODULE_KEY.USERS_STAFF, "read"),authMiddleware, getAllStoreStaff);
+router.delete("/:id",checkPermission(MODULE_KEY.USERS_STAFF, "delete"),authMiddleware, deleteStoreStaff);
+router.put("/:id/status-update",checkPermission(MODULE_KEY.USERS_STAFF, "delete"),authMiddleware, updateStoreStaffIsAcitveInActive);
 
 export default router;

@@ -14,7 +14,7 @@ const userSchema = new mongoose.Schema(
     mobile: { type: String, required: true, unique: true, index: true },
     email: { type: String, lowercase: true },
     passwordHash: { type: String, required: true, select: false },
-    roles: [{ type: mongoose.Schema.Types.ObjectId, ref: "Role" }],
+roles: [{ type: mongoose.Schema.Types.ObjectId, ref: "Role" }],
     isBlocked: { type: Boolean, default: false },
     lastLoginAt: Date
   },
@@ -37,15 +37,7 @@ userSchema.index({
   email: "text"
 });
 
-userSchema.index(
-  { roles: 1 },
-  {
-    unique: true,
-    partialFilterExpression: {
-      roles: { $exists: true }
-    }
-  }
-);
+
 
 
 

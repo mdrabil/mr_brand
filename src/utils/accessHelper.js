@@ -5,36 +5,7 @@ import { USER_ROLE } from "../constants/enums.js";
 
 const BYPASS = [USER_ROLE.ADMIN,USER_ROLE.SUPER_ADMIN,USER_ROLE.GLOBAL_SUPPORT,USER_ROLE.SALES_ADMIN];
 
-// 🔥 LIST FILTER (FAST + SCALABLE)
-// export const buildStoreFilter = async (user) => {
-//   if (user.roles.some(r => BYPASS.includes(r))) {
-//     return {}; // full access
-//   }
 
-//   const conditions = [];
-
-//   // STAFF
-//   const staffStoreIds = await StoreStaff
-//     .find({ user: user._id, isActive: true })
-//     .distinct("store");
-
-//   if (staffStoreIds.length) {
-//     conditions.push({ store: { $in: staffStoreIds } });
-//   }
-
-//   // OWNER
-//   const ownerStoreIds = await Store
-//     .find({ owner: user._id })
-//     .distinct("_id");
-
-//   if (ownerStoreIds.length) {
-//     conditions.push({ store: { $in: ownerStoreIds } });
-//   }
-
-//   if (!conditions.length) return { store: null };
-
-//   return { $or: conditions };
-// };
 
 
 
@@ -110,3 +81,5 @@ export const getUserStoreRole = async (user, storeId) => {
 
   return null;
 };
+
+
