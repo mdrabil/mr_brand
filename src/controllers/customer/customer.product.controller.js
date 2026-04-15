@@ -390,6 +390,8 @@ export const getAllProducts2 = async (req, res) => {
     if (status) filter.status = status;
     if (name) filter.name = { $regex: name, $options: "i" };
 
+    console.log("category",category)
+
     // ================= CATEGORY =================
     if (category) {
       const foundCategory = await CategoryModel.findOne({
@@ -536,6 +538,8 @@ export const getAllProducts = async (req, res) => {
 
     let filter = {};
     let andFilters = [];
+
+    console.log("get the category",category)
 
     // ✅ CATEGORY (id only)
     if (category && mongoose.Types.ObjectId.isValid(category)) {
