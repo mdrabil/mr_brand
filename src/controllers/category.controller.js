@@ -3,6 +3,7 @@ import Joi from "joi";
 import { USER_ROLE, CATEGORY_STATUS } from "../constants/enums.js";
 import { generateRMId } from "../utils/rmId.js";
 import cloudinary from "../config/cloudinaryConfig.js";
+import mongoose from "mongoose";
 
 // ------------------- Validation -------------------
 const createCategorySchema = Joi.object({
