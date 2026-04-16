@@ -727,6 +727,13 @@ export const customerLogin = async (req, res) => {
     if (!isMatch)
       return res.status(401).json({ success: false, message: "Invalid password" });
 
+    if (customer.isBlocked) {
+  return res.status(403).json({
+    success: false,
+    message: "🚫 Your account has been temporarily blocked by the admin. Please contact support for assistance."
+  });
+}
+
     // 🔹 Fetch or create cart
     let cart = await CartModel.findOne({ customerId: customer._id });
     if (!cart) {
@@ -1424,6 +1431,39 @@ export const getCustomerOrders = async (req, res) => {
   }
 };
 
+
+export const toggleCustomerStatus = async (req, res) => {
+  try {
+    const userId = req.params.id;
+
+    const user = await Customer.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    // Toggle the isBlocked status
+    user.isBlocked = !user.isBlocked;
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: `User has been ${user.isBlocked ? "blocked" : "unblocked"}`,
+      user: {
+        _id: user._id,
+        fullName: user.fullName,
+        isBlocked: user.isBlocked,
+      },
+    });
+
+  } catch (err) {
+    console.error("TOGGLE STATUS ERROR:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error. Could not toggle status",
+    });
+  }
+};
 
 
 
