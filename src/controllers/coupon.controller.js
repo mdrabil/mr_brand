@@ -1,5 +1,6 @@
 import Coupon from "../models/Coupon.model.js";
 import Joi from "joi";
+import { generateRMId } from "../utils/rmId.js";
 
 // Validation
 const createCouponSchema = Joi.object({
@@ -24,7 +25,9 @@ export const createCoupon = async (req, res) => {
     const exists = await Coupon.findOne({ code: value.code.toUpperCase() });
     if (exists) return res.status(400).json({ message: "Coupon code already exists" });
 
-    const coupon = await Coupon.create({ ...value, code: value.code.toUpperCase(), createdBy: req.user._id });
+     const rmCouponId = await generateRMId("CPN", "COUPON");
+
+    const coupon = await Coupon.create({ ...value, code: value.code.toUpperCase(), createdBy: req.user._id,rmCouponId });
     res.status(201).json({ success: true, coupon });
   } catch (err) {
     console.error("createCoupon:", err);

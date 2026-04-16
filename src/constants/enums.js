@@ -109,6 +109,7 @@ export const PRODUCT_STATUS = Object.freeze({
 export const MODULE_KEY = Object.freeze({
   DASHBOARD: 'DASHBOARD',
   PRODUCTS: 'PRODUCTS',
+  ENQUIRIES: 'ENQUIRIES',
   ORDERS: 'ORDERS',
   STORES: 'STORES',
   BLOGS: 'BLOGS',

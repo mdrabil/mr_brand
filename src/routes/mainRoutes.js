@@ -25,6 +25,7 @@ import CmsRoutes from "../routes/cms.routes.js";
 import FaqRoutes from "../routes/faq.routes.js";
 import TestimonialRoutes from "../routes/testimonial.routes.js";
 import moduleRoutes from "../routes/admin/module.routes.js";
+import enquiryRoutes from "../routes/enquiry.routes.js";
 
 
 // import { getUserStores } from "../middlewares/getUserStores.js";
@@ -49,6 +50,7 @@ router.use("/admin/faq", FaqRoutes);
 router.use("/admin/testimonials", TestimonialRoutes);
 router.use("/cart", cartRoutes);
 router.use("/admin/cms", CmsRoutes);
+router.use("/admin/enquiries", enquiryRoutes);
 /* ===================== PROTECTED ROUTES ===================== */
 // Apply auth + store-access middleware globally for admin routes
 // router.use("/admin", authMiddleware, getUserStores);
