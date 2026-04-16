@@ -6,6 +6,7 @@ import {
   deleteCustomer,
   getAllCarts,
   getCartById,
+  clearCartByAdmin,
 } from "../../controllers/customer.controller.js";
 import { adminOnly } from "../../middlewares/adminOnly.js";
 import { authMiddleware } from "../../middlewares/auth.middleware.js";
@@ -21,5 +22,6 @@ router.delete("/:id", deleteCustomer);
 // Admin routes
 router.get("/carts", authMiddleware, adminOnly, getAllCarts);
 router.get("/carts/:cartId", authMiddleware, adminOnly, getCartById);
+router.delete("/carts/clear/:id", authMiddleware, adminOnly, clearCartByAdmin);
 
 export default router;

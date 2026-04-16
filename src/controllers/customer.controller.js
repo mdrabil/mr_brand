@@ -1466,6 +1466,8 @@ export const getAllCarts = async (req, res) => {
     const skip = (page - 1) * limit;
     const query = {};
 
+    
+
     if (customerFilter && mongoose.Types.ObjectId.isValid(customerFilter)) {
       query.customerId = new mongoose.Types.ObjectId(customerFilter);
     }
@@ -1482,10 +1484,12 @@ export const getAllCarts = async (req, res) => {
 
     const totalCarts = await CartModel.countDocuments(query);
 
+
+query.items = { $exists: true, $ne: [] };
     const cartsRaw = await CartModel.find(query)
       .populate({
         path: "customerId",
-        select: "fullName email mobile",
+        select: "_id fullName email mobile",
       })
       .populate({
         path: "items.productId",
@@ -1545,6 +1549,33 @@ export const getAllCarts = async (req, res) => {
   }
 };
 
+
+
+// Clear Cart By CustomerId 
+
+export const clearCartByAdmin = async (req, res) => {
+  try {
+    const customerId = req.params.id;
+
+    // console.log("get the customer data", customerId);
+
+
+    await CartModel.findOneAndUpdate(
+      { customerId },
+      { items: [] }
+    );
+
+    return res.json({
+      success: true,
+      message :"Cart is Cleared",
+      items: [],
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 
 // export const createOrder = async (req, res) => {
 //   const session = await mongoose.startSession();
