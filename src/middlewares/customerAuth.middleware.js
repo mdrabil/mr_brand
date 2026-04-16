@@ -33,9 +33,10 @@ export const customerAuth = async (req, res, next) => {
     // 4️⃣ Block Check
     if (customer.isBlocked) {
       return res.status(403).json({
-        success: false,
-        message: "Account is blocked",
-      });
+    success: false,
+    message: "🚫 Your account has been temporarily blocked by the admin. Please contact support for assistance."
+  });
+
     }
 
 
