@@ -1098,7 +1098,9 @@ export const updateCustomerDp = async (req, res) => {
 
 
  
-
+console.log("TYPE:", typeof req.body.dp);
+console.log("BODY:", req.body);
+console.log("FILE:", req.file);
     // ---------------- Update Profile Image ----------------
     if (req.file) {
       // delete old image from cloudinary if exists

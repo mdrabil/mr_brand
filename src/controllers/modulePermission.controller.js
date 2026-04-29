@@ -4,7 +4,7 @@ import ModulePermission from "../models/ModulePermission.model.js";
 import Role from "../models/Role.model.js";
 import mongoose from "mongoose";
 
-/* ------------------- GET MY PERMISSIONS ------------------- */
+
 export const getMyPermissions = async (req, res) => {
   try {
     const userRoles = req.user.roleIds; // Logged-in user roles

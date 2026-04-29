@@ -48,10 +48,18 @@
 
 
 
-// models/StoreStaff.model.js
 import mongoose from "mongoose";
 import { STAFF_USER_ROLE } from "../constants/enums.js";
 import { generateRMId } from "../utils/rmId.js";
+
+const socialSchema = new mongoose.Schema(
+  {
+    name: String,
+    url: String,
+  },
+  { _id: false }
+);
+
 
 const storeStaffSchema = new mongoose.Schema(
   {
@@ -74,6 +82,7 @@ const storeStaffSchema = new mongoose.Schema(
       enum: Object.values(STAFF_USER_ROLE),
       required: true,
     },
+        socials: [socialSchema],
 
     isActive: { type: Boolean, default: true }
   },

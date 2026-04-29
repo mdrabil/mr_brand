@@ -2,6 +2,15 @@ import mongoose from "mongoose";
 
 import { generateRMId } from "../utils/rmId.js";
 
+const socialSchema = new mongoose.Schema(
+  {
+    name: String,
+
+    url: String,
+  },
+  { _id: false }
+);
+
 const userSchema = new mongoose.Schema(
   {
     rmId: { type: String, unique: true, index: true },
@@ -15,6 +24,8 @@ const userSchema = new mongoose.Schema(
     email: { type: String, lowercase: true },
     passwordHash: { type: String, required: true, select: false },
 roles: [{ type: mongoose.Schema.Types.ObjectId, ref: "Role" }],
+    socials: [socialSchema],
+
     isBlocked: { type: Boolean, default: false },
     lastLoginAt: Date
   },

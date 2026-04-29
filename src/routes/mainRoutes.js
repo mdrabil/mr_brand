@@ -26,6 +26,8 @@ import FaqRoutes from "../routes/faq.routes.js";
 import TestimonialRoutes from "../routes/testimonial.routes.js";
 import moduleRoutes from "../routes/admin/module.routes.js";
 import enquiryRoutes from "../routes/enquiry.routes.js";
+import BannerRoutes from "../routes/banner.routes.js";
+import AnalyticsRoutes from "../routes/analytics.routes.js";
 
 
 // import { getUserStores } from "../middlewares/getUserStores.js";
@@ -49,6 +51,7 @@ router.use("/admin/homepage", HomePageRoutes);
 router.use("/admin/faq", FaqRoutes);
 router.use("/admin/testimonials", TestimonialRoutes);
 router.use("/cart", cartRoutes);
+router.use("/banner",BannerRoutes );
 router.use("/admin/cms", CmsRoutes);
 router.use("/admin/enquiries", enquiryRoutes);
 /* ===================== PROTECTED ROUTES ===================== */
@@ -57,6 +60,7 @@ router.use("/admin/enquiries", enquiryRoutes);
 
 // Now all /admin/... routes automatically have req.user + req.allowedStores
 router.use("/admin/users", adminUserRoutes);
+router.use("/admin/analytics", AnalyticsRoutes);
 router.use("/admin/modules",moduleRoutes );
 router.use("/admin/stores", storeRoutes);
 router.use("/admin/coupons", CouponRoutes);

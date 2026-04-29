@@ -126,6 +126,7 @@ export const MODULE_KEY = Object.freeze({
   GLOBAL_USERS: 'GLOBAL_USERS',
   SETTINGS: 'SETTINGS',
   PAGE404: 'PAGE404',
+  BANNERS:"BANNERS"
 });
 
 // export const MODULE_KEY = Object.freeze({

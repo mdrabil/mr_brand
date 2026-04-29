@@ -1,6 +1,6 @@
 import Store from "../models/Store.model.js";
 import Joi from "joi";
-import { STAFF_USER_ROLE, STORE_STATUS, USER_ROLE } from "../constants/enums.js";
+import { STAFF_USER_ROLE, STATUS, STORE_STATUS, USER_ROLE } from "../constants/enums.js";
 import StoreStaffModel from "../models/StoreStaff.model.js";
 import { buildStoreFilter } from "../utils/accessHelper.js";
 import UserModel from "../models/User.model.js";
@@ -82,32 +82,86 @@ const updateStoreSchemaOnly = Joi.object({
   status: Joi.string().valid("ACTIVE", "INACTIVE").optional(),
 });
 
-export const updateStoreOnly = async (req, res) => {
-  try {
-    const { error, value } = updateStoreSchemaOnly.validate(req.body);
-    const storeId = req.params.id
-    if (error) return res.status(400).json({ message: error.details[0].message });
+// export const updateStoreOnly = async (req, res) => {
+//   try {
+//     const { error, value } = updateStoreSchemaOnly.validate(req.body);
+//     const storeId = req.params.id
+//     if (error) return res.status(400).json({ message: error.details[0].message });
 
-    const store = await Store.findById(storeId);
-    if (!store) return res.status(404).json({ message: "Store not found" });
+//     const store = await Store.findById(storeId);
+//     if (!store) return res.status(404).json({ message: "Store not found" });
 
   
 
-    // Update fields
-    if (value.timing) store.timing = value.timing;
-    if (value.isActive !== undefined) store.isActive = value.isActive;
-    if (value.status) store.status = value.status;
+//     // Update fields
+//     if (value.timing) store.timing = value.timing;
+//     if (value.isActive !== undefined) store.isActive = value.isActive;
+//     if (value.status) store.status = value.status;
+
+//     await store.save();
+//     res.status(200).json({ success: true, store, message: "Store updated successfully" });
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ message: err.message });
+//   }
+// };
+
+
+export const updateStoreOnly = async (req, res) => {
+  try {
+    const { error, value } = updateStoreSchemaOnly.validate(req.body);
+
+    const storeId = req.params.id;
+
+    if (error) {
+      return res.status(400).json({
+        message: error.details[0].message,
+      });
+    }
+
+    const store = await Store.findById(storeId);
+
+    if (!store) {
+      return res.status(404).json({
+        message: "Store not found",
+      });
+    }
+
+    // timing
+    if (value.timing) {
+      store.timing = value.timing;
+    }
+
+    // isActive
+    if (value.isActive !== undefined) {
+      store.isActive = value.isActive;
+
+      // auto status update
+   store.status = value.isActive
+  ? STORE_STATUS.ACTIVE
+  : STORE_STATUS.INACTIVE;
+    }
+
+    // manual status update (optional)
+    if (value.status) {
+      store.status = value.status;
+    }
 
     await store.save();
-    res.status(200).json({ success: true, store, message: "Store updated successfully" });
+
+    res.status(200).json({
+      success: true,
+      store,
+      message: "Store updated successfully",
+    });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: err.message });
+
+    res.status(500).json({
+      message: err.message,
+    });
   }
 };
-
-
-
 
 
 export const createStore = async (req, res) => {
@@ -223,24 +277,67 @@ export const updateStore = async (req, res) => {
 };
 
 // 🔹 Get Store by ID
+// export const getStoreById = async (req, res) => {
+//   try {
+//     const { storeId } = req.params;
+
+//     const store = await Store.findById(storeId);
+//     if (!store) return res.status(404).json({ message: "Store not found" });
+//     const roles = req.user.roles;
+//     // SUPER_ADMIN can access all, VENDOR / MANAGER only own store
+//     if (!roles.includes(USER_ROLE.SUPER_ADMIN) && !store.owner.equals(req.user._id)) {
+//       return res.status(403).json({ message: "Access denied" });
+//     }
+
+//     res.json({ success: true, store });
+//   } catch (err) {
+//     res.status(500).json({ message: err.message });
+//   }
+// };
+
+
 export const getStoreById = async (req, res) => {
   try {
     const { storeId } = req.params;
 
-    const store = await Store.findById(storeId);
-    if (!store) return res.status(404).json({ message: "Store not found" });
-    const roles = req.user.roles;
-    // SUPER_ADMIN can access all, VENDOR / MANAGER only own store
-    if (!roles.includes(USER_ROLE.SUPER_ADMIN) && !store.owner.equals(req.user._id)) {
-      return res.status(403).json({ message: "Access denied" });
+    const store = await Store.findById(storeId)
+      .populate({
+        path: "owner",
+        select: "fullName mobile email dp"
+      });
+
+    if (!store) {
+      return res.status(404).json({
+        success: false,
+        message: "Store not found"
+      });
     }
 
-    res.json({ success: true, store });
+    const roles = req.user.roles;
+
+    // SUPER_ADMIN can access all
+    // VENDOR / MANAGER only own store
+    if (
+      !roles.includes(USER_ROLE.SUPER_ADMIN) &&
+      !store.owner?._id.equals(req.user._id)
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied"
+      });
+    }
+
+    res.json({
+      success: true,
+      store
+    });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({
+      success: false,
+      message: err.message
+    });
   }
 };
-
 
 // export const getAllStores = async (req, res) => {
 //   try {

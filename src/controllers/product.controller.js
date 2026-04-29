@@ -546,13 +546,16 @@ export const getAllProducts = async (req, res) => {
       status,
       name,
       search
-    } = req.body;
+    } = req.query;
 
     page = Number(page);
     limit = Number(limit);
 
     // 🔹 NORMAL FILTERS
     const filter = {};
+
+    // console.log("req.query",req.query)
+    // console.log("req.body",req.body)
 
     if (category) filter.category = category;
     if (status) filter.status = status;
@@ -583,7 +586,7 @@ export const getAllProducts = async (req, res) => {
 
     // ✅ DATA
     const products = await Product.find(finalFilter)
-      .populate("store")
+       .populate("store", "storeName rmStoreId")
       .populate("category", "name")
       .populate("subCategory", "name")
       .skip((page - 1) * limit)
