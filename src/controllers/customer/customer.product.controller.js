@@ -578,7 +578,7 @@ export const getAllProducts = async (req, res) => {
       ProductModel.find(filter)
         .select(`
           _id rmProductId name slug description 
-          variants gstPercent status images createdAt label totalReviews
+          variants gstPercent status images createdAt label totalReviews averageRating
         `)
         .lean()
         .sort(sortObj)
@@ -599,7 +599,8 @@ export const getAllProducts = async (req, res) => {
       variants: p.variants,
       gstPercent: p.gstPercent,
       status: p.status,
-      reviews: p.totalReviews || 0,
+reviews: p.totalReviews || 0,
+averageRating: p.averageRating || 0,
       images: p.images?.map((img) => img.url),
       createdAt: p.createdAt
     }));

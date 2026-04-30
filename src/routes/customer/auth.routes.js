@@ -3,6 +3,7 @@ import express from "express";
 import { addAddress, changeCustomerPassword, createCustomer, customerLogin, customerLogout, deleteAddress, setDefaultAddress, updateAddress, updateCustomerDp, updateCustomerProfile } from "../../controllers/customer.controller.js";
 import { customerAuth } from "../../middlewares/customerAuth.middleware.js";
 import { singleDbUpload } from "../../middlewares/upload.middleware.js";
+import { resetPassword, sendOtp, verifyOtp } from "../../controllers/customer/CustomerAppOtp.controller.js";
 
 const router = express.Router();
 
@@ -24,6 +25,12 @@ router.delete("/delete/address/:addressId", customerAuth, deleteAddress);
 router.put("/set-default/address/:addressId", customerAuth, setDefaultAddress);
 
 // router.post("/register", customerRegister);
+
+
+router.post("/send-otp", sendOtp);
+router.post("/verify-otp", verifyOtp);
+router.post("/reset-password", resetPassword);
+
 
 
 
