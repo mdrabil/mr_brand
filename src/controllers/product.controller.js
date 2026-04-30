@@ -32,6 +32,8 @@ const updateProductSchema = Joi.object({
   name: Joi.string(),
   store: Joi.string(),
   category: Joi.string(),
+  totalReviews: Joi.number().min(0).optional(),
+averageRating: Joi.number().min(0).max(5).optional(),
   subCategory: Joi.string().allow("", null),
   description: Joi.string().allow(""),
   label: Joi.string(),
