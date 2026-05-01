@@ -919,6 +919,39 @@ export const updateCustomerProfile = async (req, res) => {
 };
 
 
+export const deleteCustomerAddress =async (req, res) => {
+  try {
+    const customerId = req.user._id; // logged-in user
+    const { addressId } = req.params;
+
+    const customer = await Customer.findById(customerId);
+
+    if (!customer) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+
+    // remove address by id
+    customer.addresses = customer.addresses.filter(
+      (addr) => addr._id.toString() !== addressId
+    );
+
+     await customer.save();
+
+     const userData = customer.toObject();
+    delete userData.password;
+
+    return res.json({
+      success: true,
+      message: "Profile updated successfully",
+      user: userData,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+}
+
+
 // 🔹 CHANGE PASSWORD
 export const changeCustomerPassword = async (req, res) => {
   try {

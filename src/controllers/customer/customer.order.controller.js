@@ -500,10 +500,12 @@ const nearestStore = await StoreModel.findOne({
           deliveryAddress.latitude
         ]
       },
-      $maxDistance: 2000000 // 20 km
+      $maxDistance: 20000000
     }
   }
 });
+
+console.log("get store",nearestStore)
 
 const storeLat = nearestStore.address.location.coordinates[1];
 const storeLng = nearestStore.address.location.coordinates[0];
@@ -515,6 +517,7 @@ const distanceKm = getDistanceKm(
   storeLng
 );
 
+console.log("get the distacne",distanceKm)
     // ================= CREATE ORDER =================
 const order = await Order.create([
   {

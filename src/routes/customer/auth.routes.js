@@ -1,6 +1,6 @@
 import express from "express";
 
-import { addAddress, changeCustomerPassword, createCustomer, customerLogin, customerLogout, deleteAddress, setDefaultAddress, updateAddress, updateCustomerDp, updateCustomerProfile } from "../../controllers/customer.controller.js";
+import { addAddress, changeCustomerPassword, createCustomer, customerLogin, customerLogout, deleteAddress, deleteCustomerAddress, setDefaultAddress, updateAddress, updateCustomerDp, updateCustomerProfile } from "../../controllers/customer.controller.js";
 import { customerAuth } from "../../middlewares/customerAuth.middleware.js";
 import { singleDbUpload } from "../../middlewares/upload.middleware.js";
 import { resetPassword, sendOtp, verifyOtp } from "../../controllers/customer/CustomerAppOtp.controller.js";
@@ -11,6 +11,7 @@ const router = express.Router();
 router.post("/signup", createCustomer);
 router.post("/login", customerLogin);
 router.post("/logout", customerLogout);
+router.delete("/address/:addressId", customerAuth, deleteCustomerAddress);
 router.put("/update-profile", customerAuth, updateCustomerProfile);
 router.put("/change-password", customerAuth, changeCustomerPassword);
 router.put(
