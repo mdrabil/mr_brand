@@ -402,8 +402,8 @@ export const getAllOrders = async (req, res) => {
 
     // ================= PAGINATED ORDERS =================
     const orders = await Order.find(filter)
-      .populate("customerId", "fullName mobile")
-      .populate("store", "storeName")
+      .populate("customerId", "fullName mobile email")
+      .populate("store", "storeName address")
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit);

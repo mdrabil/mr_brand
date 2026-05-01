@@ -105,15 +105,32 @@ const orderSchema = new mongoose.Schema(
     deliveryDate: Date,
     notes: String,
     deliverySlot: String,
-    deliveryAddress: {
-      fullAddress: String,
-      city: String,
-      pincode: String,
-      latitude: Number,
-      longitude: Number
-    },
+  deliveryAddress: {
+  fullAddress: String,
+  addressLine:String,
+  city: String,
+  state: String,
+  pincode: String,
 
-    // ✅ Order Status
+  location: {
+    type: {
+      type: String,
+      enum: ["Point"],
+      default: "Point",
+    },
+    coordinates: {
+      type: [Number], // [lng, lat]
+      required: true,
+    },
+  },
+},
+
+deliveryMeta: {
+  distanceKm: { type: Number, default: 0 },
+  assignedStoreType: String, // optional (nearest/manual)
+},
+
+  
     status: {
       type: String,
       enum: Object.values(ORDER_STATUS),

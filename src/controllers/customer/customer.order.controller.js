@@ -7,6 +7,8 @@ import Product from "../../models/Product.model.js";
 import { ORDER_STATUS } from "../../constants/enums.js";
 import { generateRMId, generateTransactionId } from "../../utils/rmId.js";
 import Customer from "../../models/Customer.js";
+import { getDistanceKm } from "../../utils/getDistanceKm.js";
+import StoreModel from "../../models/Store.model.js";
 
 // export const placeOrderController = async (req, res) => {
 //   if (!req.user) {
@@ -321,6 +323,8 @@ export const placeOrderController = async (req, res) => {
 
       if (!storeId) storeId = product.store;
 
+
+
       const itemTotal = price * qty;
       const itemGST = (itemTotal * gstPercent) / 100;
 
@@ -429,50 +433,124 @@ export const placeOrderController = async (req, res) => {
     }
 
     // ================= DELIVERY ADDRESS =================
-    if (deliveryAddress) {
-      const existingAddress = req.user.addresses.find(addr =>
-        addr.fullAddress === deliveryAddress.fullAddress &&
-        addr.addressLine === deliveryAddress.addressLine &&
-        addr.mobile === deliveryAddress.mobile &&
-        addr.city === deliveryAddress.city &&
-        addr.state === deliveryAddress.state &&
-        addr.pincode === deliveryAddress.pincode &&
-        addr.type === deliveryAddress.type
-      );
+    // if (deliveryAddress) {
+    //   const existingAddress = req.user.addresses.find(addr =>
+    //     addr.fullAddress === deliveryAddress.fullAddress &&
+    //     addr.addressLine === deliveryAddress.addressLine &&
+    //     addr.mobile === deliveryAddress.mobile &&
+    //     addr.city === deliveryAddress.city &&
+    //     addr.state === deliveryAddress.state &&
+    //     addr.pincode === deliveryAddress.pincode &&
+    //     addr.type === deliveryAddress.type
+    //   );
 
-      if (!existingAddress) {
-        await Customer.updateOne(
-          { _id: customerId },
-          { $push: { addresses: deliveryAddress } },
-          { session }
-        );
+    //   if (!existingAddress) {
+    //     await Customer.updateOne(
+    //       { _id: customerId },
+    //       { $push: { addresses: deliveryAddress } },
+    //       { session }
+    //     );
+    //   }
+    // }
+
+    let isNewAddress = true;
+
+const existingAddress = req.user.addresses.find(addr =>
+  addr.fullAddress === deliveryAddress.fullAddress &&
+  addr.addressLine === deliveryAddress.addressLine &&
+  addr.mobile === deliveryAddress.mobile &&
+  addr.city === deliveryAddress.city &&
+  addr.state === deliveryAddress.state &&
+  addr.pincode === deliveryAddress.pincode &&
+  addr.type === deliveryAddress.type
+);
+
+if (existingAddress) {
+  isNewAddress = false;
+}
+
+if (isNewAddress) {
+  await Customer.updateOne(
+    { _id: customerId },
+    {
+      $push: {
+        addresses: {
+          ...deliveryAddress,
+          location: {
+            type: "Point",
+            coordinates: [
+              deliveryAddress.longitude,
+              deliveryAddress.latitude
+            ]
+          }
+        }
       }
+    },
+    { session }
+  );
+}
+
+const nearestStore = await StoreModel.findOne({
+  "address.location": {
+    $near: {
+      $geometry: {
+        type: "Point",
+        coordinates: [
+          deliveryAddress.longitude,
+          deliveryAddress.latitude
+        ]
+      },
+      $maxDistance: 2000000 // 20 km
     }
+  }
+});
+
+const storeLat = nearestStore.address.location.coordinates[1];
+const storeLng = nearestStore.address.location.coordinates[0];
+
+const distanceKm = getDistanceKm(
+  deliveryAddress.latitude,
+  deliveryAddress.longitude,
+  storeLat,
+  storeLng
+);
 
     // ================= CREATE ORDER =================
-    const order = await Order.create(
-      [
-        {
-          customerId,
-          store: storeId,
-          rmOrderId,
-          transactionId,
-          items: orderItems,
-          totalAmount,
-          gstAmount,
-          discountAmount,
-          payableAmount,
-          couponCode: appliedCoupon,
-          paymentMethod: finalPaymentMethod,
-          notes,
-          deliverySlot,
-          deliveryAddress,
-          status: ORDER_STATUS.PLACED,
-          deliveryDate
-        }
-      ],
-      { session }
-    );
+const order = await Order.create([
+  {
+    rmOrderId,
+    customerId,
+    store: nearestStore._id,
+
+    items: orderItems,
+    totalAmount,
+    gstAmount,
+    discountAmount,
+    payableAmount,
+
+    deliveryAddress: {
+      ...deliveryAddress,
+      location: {
+        type: "Point",
+        coordinates: [
+          deliveryAddress.longitude,
+          deliveryAddress.latitude
+        ]
+      }
+    },
+
+    deliveryMeta: {
+      distanceKm: Number(distanceKm.toFixed(2)),
+      assignedStoreType: isNewAddress ? "AUTO_NEW_ADDRESS" : "AUTO_EXISTING"
+    },
+
+    paymentMethod: finalPaymentMethod,
+    notes,
+    deliverySlot,
+    status: ORDER_STATUS.PLACED,
+    deliveryDate
+  }
+], { session });
 
     // Clear cart
     await Cart.updateOne({ customerId }, { $set: { items: [] } }, { session });

@@ -95,4 +95,6 @@ storeSchema.pre("save", async function (next) {
 
 storeSchema.index({ storeName: 1, owner: 1 }, { unique: true });
 
+storeSchema.index({ "address.location": "2dsphere" });
+
 export default mongoose.model("Store", storeSchema);

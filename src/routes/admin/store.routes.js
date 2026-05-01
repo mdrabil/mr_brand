@@ -36,7 +36,7 @@ router.patch(
   "/update/:storeId",
   authMiddleware,
    checkPermission(MODULE_KEY.STORES,'update'),
-   allowStoreRoles([STAFF_USER_ROLE.STORE_MANAGER,STAFF_USER_ROLE.OWNER]),
+   allowStoreRoles([STAFF_USER_ROLE.STORE_MANAGER,STAFF_USER_ROLE.OWNER,USER_ROLE.SUPER_ADMIN]),
  
   updateStore
 );

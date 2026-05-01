@@ -37,7 +37,7 @@ const createStoreSchema = Joi.object({
 
 const updateStoreSchema = Joi.object({
   storeName: Joi.string(),
-
+   owner: Joi.string().optional(),
   address: Joi.object({
     fullAddress: Joi.string(),
     city: Joi.string(),
@@ -250,7 +250,7 @@ export const updateStore = async (req, res) => {
   try {
     const { storeId } = req.params;
 
-   
+   console.log("req.body",req.body)
     const { error, value } = updateStoreSchema.validate(req.body);
     if (error) return res.status(400).json({ message: error.details[0].message });
 

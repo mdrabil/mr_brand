@@ -539,7 +539,7 @@ export const getAllProducts = async (req, res) => {
     let filter = {};
     let andFilters = [];
 
-    console.log("get the category",category)
+  
 
     // ✅ CATEGORY (id only)
     if (category && mongoose.Types.ObjectId.isValid(category)) {
@@ -566,10 +566,23 @@ export const getAllProducts = async (req, res) => {
     }
 
     // ✅ SORT
+    // let sortObj = { createdAt: -1 };
+    // if (sortBy) {
+    //   sortObj = { [sortBy]: order === "asc" ? 1 : -1 };
+    // }
+
     let sortObj = { createdAt: -1 };
-    if (sortBy) {
-      sortObj = { [sortBy]: order === "asc" ? 1 : -1 };
-    }
+
+if (sortBy) {
+  if (sortBy === "averageRating") {
+    // 🔥 TREND = rating + reviews priority
+    sortObj = { averageRating: -1, totalReviews: -1 };
+  } else if (sortBy === "createdAt") {
+    sortObj = { createdAt: -1 };
+  } else {
+    sortObj = { [sortBy]: order === "asc" ? 1 : -1 };
+  }
+}
 
     // 🚀 PARALLEL FAST QUERY
     const [total, productData] = await Promise.all([
@@ -622,6 +635,9 @@ averageRating: p.averageRating || 0,
     });
   }
 };
+
+
+
 // export const getAllProducts = async (req, res) => {
 //   try {
 //     const {
