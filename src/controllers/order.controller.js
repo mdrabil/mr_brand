@@ -324,7 +324,7 @@ export const getAllOrders = async (req, res) => {
               }
             : {},
       })
-      .populate("store", "storeName address")
+      .populate("store", "_id storeName address")
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit);
