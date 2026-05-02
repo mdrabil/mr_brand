@@ -64,6 +64,20 @@ export const STORE_STATUS = Object.freeze({
   SUSPENDED: "SUSPENDED"
 });
 
+
+export const VARIFICATION_TYPE = Object.freeze({
+  PENDING: "PENDING",
+  ON_HOLD:"ON_HOLD",
+  APPROVED: "APPROVED",
+  REJECTED: "REJECTED"
+});
+
+export const STORE_OWNERSHIP_MODEL = Object.freeze({
+  COCO: "COCO",   // Company Owned Company Operated
+  FOCO: "FOCO",   // Franchise Owned Company Operated
+  FOFO: "FOFO"    // Franchise Owned Franchise Operated (optional future)
+});
+
 export const ORDER_STATUS = Object.freeze({
   PLACED: "PLACED",
   PREPARING: "PREPARING",

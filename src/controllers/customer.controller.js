@@ -986,9 +986,74 @@ export const changeCustomerPassword = async (req, res) => {
 /**
  * ✅ Add Address
  */
+// export const addAddress = async (req, res) => {
+//   try {
+//     const userId = req.user._id;
+//     const {
+//       fullAddress,
+//       addressLine,
+//       mobile,
+//       city,
+//       state,
+//       pincode,
+//       latitude,
+//       longitude,
+//       type,
+//       isDefault,
+//     } = req.body;
+
+//     if (!latitude || !longitude) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Latitude and Longitude required",
+//       });
+//     }
+
+//     const customer = await Customer.findById(userId);
+//     if (!customer)
+//       return res.status(404).json({ success: false, message: "User not found" });
+
+//     // ✅ If setting default, remove old default
+//     if (isDefault) {
+//       customer.addresses.forEach((addr) => (addr.isDefault = false));
+//     }
+
+//     customer.addresses.push({
+//       fullAddress,
+//       addressLine,
+//       mobile,
+//       city,
+//       state,
+//       pincode,
+//       latitude,
+//       longitude,
+//       type,
+//       isDefault: isDefault || false,
+//       location: {
+//         type: "Point",
+//         coordinates: [longitude, latitude],
+//       },
+//     });
+
+//     await customer.save();
+
+//     return res.status(201).json({
+//       success: true,
+//       message: "Address added successfully",
+//       user: customer,
+//     });
+//   } catch (error) {
+//     return res.status(500).json({
+//       success: false,
+//       message: error.message,
+//     });
+//   }
+// };
+
 export const addAddress = async (req, res) => {
   try {
     const userId = req.user._id;
+
     const {
       fullAddress,
       addressLine,
@@ -1010,14 +1075,41 @@ export const addAddress = async (req, res) => {
     }
 
     const customer = await Customer.findById(userId);
-    if (!customer)
-      return res.status(404).json({ success: false, message: "User not found" });
+
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // ✅ CHECK EXISTING ADDRESS
+    const existingAddress = customer.addresses.find((addr) => {
+      return (
+        addr.fullAddress === fullAddress &&
+        addr.addressLine === addressLine &&
+        addr.mobile === mobile &&
+        addr.city === city &&
+        addr.state === state &&
+        addr.pincode === pincode &&
+        addr.type === type
+      );
+    });
+
+    if (existingAddress) {
+      return res.status(200).json({
+        success: true,
+        message: "Address already exists",
+        isNewAddress: false,
+      });
+    }
 
     // ✅ If setting default, remove old default
     if (isDefault) {
       customer.addresses.forEach((addr) => (addr.isDefault = false));
     }
 
+    // ✅ ADD NEW ADDRESS
     customer.addresses.push({
       fullAddress,
       addressLine,
@@ -1040,6 +1132,7 @@ export const addAddress = async (req, res) => {
     return res.status(201).json({
       success: true,
       message: "Address added successfully",
+      isNewAddress: true,
       user: customer,
     });
   } catch (error) {
@@ -1049,7 +1142,6 @@ export const addAddress = async (req, res) => {
     });
   }
 };
-
 /**
  * ✅ Update Address
  */
@@ -1057,6 +1149,8 @@ export const updateAddress = async (req, res) => {
   try {
     const userId = req.user._id;
     const { addressId } = req.params;
+
+    console.log("get the data",addressId)
 
     const {
       fullAddress,
@@ -1076,6 +1170,8 @@ export const updateAddress = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
 
     const address = customer.addresses.id(addressId);
+        console.log("get the data of address",addAddress)
+        console.log("get the data",addressId)
     if (!address)
       return res.status(404).json({ success: false, message: "Address not found" });
 

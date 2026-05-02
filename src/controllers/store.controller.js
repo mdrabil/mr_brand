@@ -9,6 +9,11 @@ import UserModel from "../models/User.model.js";
 // Joi validation schema
 const createStoreSchema = Joi.object({
   storeName: Joi.string().required(),
+  supportNumber: Joi.string()
+  .pattern(/^[0-9]{10}$/)
+  .allow("")
+  .optional(),
+  fssaiNumber: Joi.string().allow("").optional(),
    owner: Joi.string().optional(),
   status: Joi.string().valid("ACTIVE","INACTIVE","SUSPENDED"),
   address: Joi.object({
@@ -37,6 +42,11 @@ const createStoreSchema = Joi.object({
 
 const updateStoreSchema = Joi.object({
   storeName: Joi.string(),
+  supportNumber: Joi.string()
+  .pattern(/^[0-9]{10}$/)
+  .allow("")
+  .optional(),
+  fssaiNumber: Joi.string().allow("").optional(),
    owner: Joi.string().optional(),
   address: Joi.object({
     fullAddress: Joi.string(),
@@ -48,6 +58,9 @@ const updateStoreSchema = Joi.object({
       coordinates: Joi.array().items(Joi.number()).length(2)
     })
   }),
+  verificationStatus: Joi.string()
+  .valid("PENDING", "ON_HOLD", "APPROVED", "REJECTED")
+  .optional(),
   gstDetails: Joi.object({
     gstNumber: Joi.string().allow(""),
     cgst: Joi.number().min(0),

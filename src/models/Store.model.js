@@ -1,6 +1,6 @@
 // models/Store.js
 import mongoose from "mongoose";
-import { STORE_STATUS } from "../constants/enums.js";
+import { STORE_OWNERSHIP_MODEL, STORE_STATUS, VARIFICATION_TYPE } from "../constants/enums.js";
 import { generateRMId } from "../utils/rmId.js";
 
 const storeSchema = new mongoose.Schema(
@@ -24,6 +24,17 @@ const storeSchema = new mongoose.Schema(
       required: true,
       index: true
     },
+
+supportNumber: {
+  type: String,
+  trim: true,
+  default: ""
+},
+
+fssaiNumber: {
+  type: String,
+  default: ""
+},
 
    address: {
   fullAddress: String,
@@ -76,10 +87,19 @@ default:null
 },
 
 
-    isVerified: {
-      type: Boolean,
-      default: false
-    }
+verificationStatus:  {
+      type: String,
+      enum: Object.values(VARIFICATION_TYPE),
+      default: VARIFICATION_TYPE.PENDING
+    },
+
+   
+ ownershipModel: {
+  type: String,
+  enum: Object.values(STORE_OWNERSHIP_MODEL),
+  default:STORE_OWNERSHIP_MODEL.COCO
+}
+
   },
   { timestamps: true }
 );
