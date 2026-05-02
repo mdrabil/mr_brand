@@ -418,7 +418,7 @@ export const getAllStores = async (req, res) => {
       ...accessFilter
     };
     
-    console.log("get the data from frotnend ",finalFilter)
+    // console.log("get the data from frotnend ",finalFilter)
     const total = await Store.countDocuments(finalFilter);
    
 

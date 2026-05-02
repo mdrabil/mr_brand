@@ -8,23 +8,13 @@ import UserModel from "../../models/User.model.js";
 import { buildStoreFilter } from "../../utils/accessHelper.js";
 import { calculateGrowth } from "../../utils/calculateGrowth.js";
 
-export const getOrderAnalytics = async (
-  req,
-  res
-) => {
+export const getOrderAnalytics = async ( req,res) => {
   try {
-    const user = req.user;
+       const user = req.user;
 
-    const {
-      startDate,
-      endDate,
-      storeId,
-    } = req.query;
+    const { startDate, endDate,storeId} = req.query;
 
-    // ======================================================
-    // CURRENT RANGE
-    // ======================================================
-
+  
     let currentStart = null;
     let currentEnd = null;
 
@@ -143,6 +133,9 @@ export const getOrderAnalytics = async (
         }
       );
     };
+
+  
+
 
     // ======================================================
     // GET DATA
