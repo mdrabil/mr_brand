@@ -422,14 +422,22 @@ const accessFilter = await buildStoreFilter(user, {
 });
 
 
-    if (store && store.trim() !== "") {
-      filter.store = store;
-    }
 
-  filter = {
+//   filter = {
+//   ...accessFilter,
+//   ...(store ? { store: new mongoose.Types.ObjectId(store) } : {}),
+// };
+
+filter = {
   ...accessFilter,
-  ...(store ? { store: new mongoose.Types.ObjectId(store) } : {}),
 };
+
+if (store) {
+  filter.store = mongoose.Types.ObjectId.isValid(store)
+    ? new mongoose.Types.ObjectId(store)
+    : store;
+}
+
     if (status) filter.status = status;
     if (customer) filter.customer = customer;
     if (category) filter.category = category;
@@ -520,8 +528,8 @@ const accessFilter = await buildStoreFilter(user, {
       .limit(Number(limit));
 
     // ================= STATUS SUMMARY =================
-    const summaryFilter = { ...filter };
-    delete summaryFilter.status;
+const summaryFilter = { ...filter };
+delete summaryFilter.status;
 
     const statusAgg = await Order.aggregate([
       { $match: summaryFilter },
