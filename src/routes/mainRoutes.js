@@ -10,7 +10,6 @@ import adminOrderRoutes from "./admin/order.routes.js";
 import permissionRoutes from "./admin/permission.routes.js";
 import roleRoutes from "./admin/role.routes.js";
 import CouponRoutes from "./admin/coupon.routes.js";
-// import paymentRoutes from "./admin/payment.routes.js";
 import customerAuthRoutes from "./customer/auth.routes.js";
 import customerRoutes from "./admin/customer.routes.js";
 import cartRoutes from "./customer/cart.routes.js";
@@ -71,7 +70,7 @@ router.use("/admin/stores", storeRoutes);
 router.use("/admin/coupons", CouponRoutes);
 router.use("/admin/store-staff", staffRoutes);
 router.use("/admin/categories", categoryRoutes);
-// router.use("/admin/payment", paymentRoutes);
+
 router.use("/admin/products", productRoutes);
 router.use("/admin/orders", adminOrderRoutes);
 router.use("/admin/module-permissions", permissionRoutes);

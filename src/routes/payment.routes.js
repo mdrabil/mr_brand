@@ -9,6 +9,7 @@ import express from "express";
 import {
   createPaymentOrderController,
   deletePayment,
+  getNonSuccessPayments,
   getPaymentById,
   getPayments,
   saveFailedPaymentController,
@@ -38,6 +39,12 @@ router.get(
   getPayments
 );
 
+router.get(
+  "/failed-payment",
+  authMiddleware,
+  checkPermission(MODULE_KEY.PAYMENTS, "read"),
+  getNonSuccessPayments
+);
 
 router.get(
   "/:id",

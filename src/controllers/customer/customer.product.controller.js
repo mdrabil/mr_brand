@@ -790,6 +790,9 @@ export const applyCoupon = async (req, res) => {
   try {
     console.log("----- APPLY COUPON API HIT -----");
 
+    console.log("req.user", req.user);
+
+    
     const { code, orderAmount } = req.query;
 
     console.log("Incoming Query:", { code, orderAmount });
