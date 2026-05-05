@@ -191,6 +191,204 @@ export const getOrderById = async (req, res) => {
 
 
 // ================== GET ALL ORDERS ==================
+// export const getAllOrders = async (req, res) => {
+//   try {
+//     const user = req.user;
+
+//     const {
+//       page = 1,
+//       limit = 10,
+//       search = "",
+//       status,
+//       store,
+//       customer,
+//       category,
+//       startDate,
+//       endDate,
+//       deliveryStartDate,
+//       deliveryEndDate,
+//     } = req.query;
+
+//     let filter = {};
+
+//     // ================= STORE ACCESS =================
+//     const accessFilter = await buildStoreFilter(user, {
+//       field: "store",
+//       storeId: req.query.store,
+//     });
+
+//     if (store && store.trim() !== "") {
+//       filter.store = store;
+//     }
+
+//     filter = {
+//       ...filter,
+//       ...accessFilter,
+//     };
+
+//     // ================= OPTIONAL FILTERS =================
+//     if (status && status.trim() !== "") {
+//       filter.status = status;
+//     }
+
+//     if (customer && customer.trim() !== "") {
+//       filter.customer = customer;
+//     }
+
+//     if (category && category.trim() !== "") {
+//       filter.category = category;
+//     }
+
+//     // ================= CREATED DATE FILTER =================
+//     if (startDate || endDate) {
+//       filter.createdAt = {};
+
+//       if (startDate) {
+//         filter.createdAt.$gte = new Date(startDate);
+//       }
+
+//       if (endDate) {
+//         const end = new Date(endDate);
+//         end.setHours(23, 59, 59, 999);
+
+//         filter.createdAt.$lte = end;
+//       }
+//     }
+
+//     // ================= DELIVERY DATE FILTER =================
+//     if (deliveryStartDate || deliveryEndDate) {
+//       filter.deliveryDate = {};
+
+//       if (deliveryStartDate) {
+//         filter.deliveryDate.$gte = new Date(deliveryStartDate);
+//       }
+
+//       if (deliveryEndDate) {
+//         const end = new Date(deliveryEndDate);
+//         end.setHours(23, 59, 59, 999);
+
+//         filter.deliveryDate.$lte = end;
+//       }
+//     }
+
+//     // ================= SEARCH FILTER =================
+//     if (search && search.trim() !== "") {
+//       const regex = new RegExp(search, "i");
+
+//       filter.$or = [
+//         { rmOrderId: regex },
+//         { paymentStatus: regex },
+//         { status: regex },
+
+//         // total / payable amount search
+//         {
+//           totalAmount: !isNaN(search) ? Number(search) : -1,
+//         },
+//         {
+//           payableAmount: !isNaN(search) ? Number(search) : -1,
+//         },
+//       ];
+//     }
+
+//     // ================= TOTAL COUNTS =================
+//     const totalOrders = await Order.countDocuments(filter);
+
+//     // ================= TOTAL REVENUE =================
+//     const totalRevenueAgg = await Order.aggregate([
+//       { $match: filter },
+//       {
+//         $group: {
+//           _id: null,
+//           totalRevenue: { $sum: "$payableAmount" },
+//           totalAmount: { $sum: "$totalAmount" },
+//         },
+//       },
+//     ]);
+
+//     const totalRevenue = totalRevenueAgg[0]?.totalRevenue || 0;
+//     const totalAmount = totalRevenueAgg[0]?.totalAmount || 0;
+
+//     // ================= ORDERS =================
+//     const orders = await Order.find(filter)
+//       .populate({
+//         path: "customerId",
+//         select: "fullName mobile email",
+//         match:
+//           search && search.trim() !== ""
+//             ? {
+//                 $or: [
+//                   { fullName: { $regex: search, $options: "i" } },
+//                   { mobile: { $regex: search, $options: "i" } },
+//                   { email: { $regex: search, $options: "i" } },
+//                 ],
+//               }
+//             : {},
+//       })
+//       .populate("store", "_id storeName address")
+//       .sort({ createdAt: -1 })
+//       .skip((page - 1) * limit)
+//       .limit(limit);
+
+//     // remove unmatched populated customer search
+//     const filteredOrders =
+//       search && search.trim() !== ""
+//         ? orders.filter(
+//             (o) =>
+//               o.customerId ||
+//               o.rmOrderId?.match(new RegExp(search, "i")) ||
+//               o.status?.match(new RegExp(search, "i")) ||
+//               o.paymentStatus?.match(new RegExp(search, "i")) ||
+//               o.totalAmount === Number(search) ||
+//               o.payableAmount === Number(search)
+//           )
+//         : orders;
+
+//     // ================= STATUS SUMMARY =================
+//     const summaryFilter = { ...filter };
+//     delete summaryFilter.status;
+
+//     const statusAgg = await Order.aggregate([
+//       { $match: summaryFilter },
+//       {
+//         $group: {
+//           _id: "$status",
+//           count: { $sum: 1 },
+//         },
+//       },
+//     ]);
+
+//     const allStatuses = Object.values(ORDER_STATUS);
+
+//     const statusSummary = allStatuses.map((st) => {
+//       const found = statusAgg.find((s) => s._id === st);
+
+//       return {
+//         status: st,
+//         totalOrders: found?.count || 0,
+//       };
+//     });
+
+//     res.json({
+//       success: true,
+//       totalOrders,
+//       totalAmount,
+//       totalRevenue,
+//       page: Number(page),
+//       limit: Number(limit),
+//       statusSummary,
+//       orders: filteredOrders,
+//     });
+//   } catch (err) {
+//     console.error("getAllOrders:", err);
+
+//     res.status(500).json({
+//       message: "Server error",
+//     });
+//   }
+// };
+
+
+
 export const getAllOrders = async (req, res) => {
   try {
     const user = req.user;
@@ -207,6 +405,10 @@ export const getAllOrders = async (req, res) => {
       endDate,
       deliveryStartDate,
       deliveryEndDate,
+
+      // 🔥 NEW SORT PARAMS
+      sortBy = "createdAt",
+      sortOrder = "desc",
     } = req.query;
 
     let filter = {};
@@ -226,61 +428,40 @@ export const getAllOrders = async (req, res) => {
       ...accessFilter,
     };
 
-    // ================= OPTIONAL FILTERS =================
-    if (status && status.trim() !== "") {
-      filter.status = status;
-    }
+    if (status) filter.status = status;
+    if (customer) filter.customer = customer;
+    if (category) filter.category = category;
 
-    if (customer && customer.trim() !== "") {
-      filter.customer = customer;
-    }
-
-    if (category && category.trim() !== "") {
-      filter.category = category;
-    }
-
-    // ================= CREATED DATE FILTER =================
+    // ================= DATE FILTER =================
     if (startDate || endDate) {
       filter.createdAt = {};
-
-      if (startDate) {
-        filter.createdAt.$gte = new Date(startDate);
-      }
+      if (startDate) filter.createdAt.$gte = new Date(startDate);
 
       if (endDate) {
         const end = new Date(endDate);
         end.setHours(23, 59, 59, 999);
-
         filter.createdAt.$lte = end;
       }
     }
 
-    // ================= DELIVERY DATE FILTER =================
     if (deliveryStartDate || deliveryEndDate) {
       filter.deliveryDate = {};
-
-      if (deliveryStartDate) {
-        filter.deliveryDate.$gte = new Date(deliveryStartDate);
-      }
+      if (deliveryStartDate) filter.deliveryDate.$gte = new Date(deliveryStartDate);
 
       if (deliveryEndDate) {
         const end = new Date(deliveryEndDate);
         end.setHours(23, 59, 59, 999);
-
         filter.deliveryDate.$lte = end;
       }
     }
 
-    // ================= SEARCH FILTER =================
+    // ================= SEARCH =================
     if (search && search.trim() !== "") {
       const regex = new RegExp(search, "i");
 
       filter.$or = [
         { rmOrderId: regex },
-        { paymentStatus: regex },
         { status: regex },
-
-        // total / payable amount search
         {
           totalAmount: !isNaN(search) ? Number(search) : -1,
         },
@@ -290,10 +471,10 @@ export const getAllOrders = async (req, res) => {
       ];
     }
 
-    // ================= TOTAL COUNTS =================
+    // ================= TOTAL =================
     const totalOrders = await Order.countDocuments(filter);
 
-    // ================= TOTAL REVENUE =================
+    // ================= REVENUE =================
     const totalRevenueAgg = await Order.aggregate([
       { $match: filter },
       {
@@ -308,40 +489,33 @@ export const getAllOrders = async (req, res) => {
     const totalRevenue = totalRevenueAgg[0]?.totalRevenue || 0;
     const totalAmount = totalRevenueAgg[0]?.totalAmount || 0;
 
+    // ================= SAFE SORTING =================
+    const allowedSortFields = [
+      "createdAt",
+      "deliveryDate",
+      "payableAmount",
+      "discountAmount",
+      "totalAmount",
+    ];
+
+    const finalSortBy = allowedSortFields.includes(sortBy)
+      ? sortBy
+      : "createdAt";
+
+    const sort = {
+      [finalSortBy]: sortOrder === "asc" ? 1 : -1,
+    };
+
     // ================= ORDERS =================
     const orders = await Order.find(filter)
       .populate({
         path: "customerId",
         select: "fullName mobile email",
-        match:
-          search && search.trim() !== ""
-            ? {
-                $or: [
-                  { fullName: { $regex: search, $options: "i" } },
-                  { mobile: { $regex: search, $options: "i" } },
-                  { email: { $regex: search, $options: "i" } },
-                ],
-              }
-            : {},
       })
       .populate("store", "_id storeName address")
-      .sort({ createdAt: -1 })
+      .sort(sort)
       .skip((page - 1) * limit)
-      .limit(limit);
-
-    // remove unmatched populated customer search
-    const filteredOrders =
-      search && search.trim() !== ""
-        ? orders.filter(
-            (o) =>
-              o.customerId ||
-              o.rmOrderId?.match(new RegExp(search, "i")) ||
-              o.status?.match(new RegExp(search, "i")) ||
-              o.paymentStatus?.match(new RegExp(search, "i")) ||
-              o.totalAmount === Number(search) ||
-              o.payableAmount === Number(search)
-          )
-        : orders;
+      .limit(Number(limit));
 
     // ================= STATUS SUMMARY =================
     const summaryFilter = { ...filter };
@@ -361,7 +535,6 @@ export const getAllOrders = async (req, res) => {
 
     const statusSummary = allStatuses.map((st) => {
       const found = statusAgg.find((s) => s._id === st);
-
       return {
         status: st,
         totalOrders: found?.count || 0,
@@ -376,16 +549,17 @@ export const getAllOrders = async (req, res) => {
       page: Number(page),
       limit: Number(limit),
       statusSummary,
-      orders: filteredOrders,
+      orders,
     });
+
   } catch (err) {
     console.error("getAllOrders:", err);
-
-    res.status(500).json({
-      message: "Server error",
-    });
+    res.status(500).json({ message: "Server error" });
   }
 };
+
+
+
 // export const getAllOrders = async (req, res) => {
 //   try {
 //     const user = req.user;
