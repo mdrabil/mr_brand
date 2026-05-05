@@ -119,7 +119,7 @@ totalReviews: {
 
 productSchema.pre("save", async function (next) {
   if (!this.rmProductId) {
-    this.rmProductId = await generateRMId("RMP");
+    this.rmProductId = await generateRMId("RMP","PRODUCT");
   }
   next();
 });

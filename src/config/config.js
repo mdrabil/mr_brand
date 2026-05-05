@@ -28,6 +28,7 @@ export const config = {
   emailUser: process.env.EMAIL_USER,
   emailPass: process.env.EMAIL_PASS,
   razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET,
+  razorpayKeyId: process.env.RAZORPAY_KEY_ID,
   cloudName: process.env.CLOUD_NAME,
   cloudinaryApiKey: process.env.CLOUDINARY_API_KEY,
   cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET,

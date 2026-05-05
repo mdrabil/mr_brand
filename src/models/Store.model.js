@@ -107,11 +107,11 @@ verificationStatus:  {
 
 storeSchema.pre("save", async function (next) {
   if (!this.rmStoreId) {
-    this.rmStoreId = await generateRMId("STR");
+    this.rmStoreId = await generateRMId("STR","STORE");
   }
   next();
 });
-// storeSchema.index({ "address.location": "2dsphere" });
+
 
 storeSchema.index({ storeName: 1, owner: 1 }, { unique: true });
 

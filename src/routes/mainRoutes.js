@@ -28,6 +28,8 @@ import moduleRoutes from "../routes/admin/module.routes.js";
 import enquiryRoutes from "../routes/enquiry.routes.js";
 import BannerRoutes from "../routes/banner.routes.js";
 import AnalyticsRoutes from "../routes/analytics.routes.js";
+import paymentRoutes from "../routes/payment.routes.js";
+
 
 
 // import { getUserStores } from "../middlewares/getUserStores.js";
@@ -44,6 +46,7 @@ router.use("/public/coupon", publicProductRoutes);
 router.use("/customer/orders", customerOrdersRoutes);
 router.use("/customer/wishlist", wishListRoutes);
 router.use("/blogs", blogsRoutes);
+router.use("/payment", paymentRoutes);
 // router.use("/admin/cms", cmsPageRoutes);
 router.use("/admin/contact", ContactUsRoutes);
 router.use("/jobs", JobRoutes);

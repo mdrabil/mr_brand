@@ -55,7 +55,7 @@ const commissionConfigSchema = new mongoose.Schema(
 
 commissionConfigSchema.pre("save", async function (next) {
   if (!this.rmCommissionConfigId) {
-    this.rmCommissionConfigId = await generateRMId("RMU");
+    this.rmCommissionConfigId = await generateRMId("RMU","COMMISTIONCONFIG");
   }
   next();
 });

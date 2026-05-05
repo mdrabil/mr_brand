@@ -94,7 +94,7 @@ const storeStaffSchema = new mongoose.Schema(
 // For .save() / .create()
 storeStaffSchema.pre("save", async function(next) {
   if (!this.rmStaffId) {
-    this.rmStaffId = await generateRMId("RMSTF");
+    this.rmStaffId = await generateRMId("RMSTF","STORE_STAFF");
   }
   next();
 });
@@ -103,7 +103,7 @@ storeStaffSchema.pre("save", async function(next) {
 storeStaffSchema.pre("insertMany", async function(next, docs) {
   for (let doc of docs) {
     if (!doc.rmStaffId) {
-      doc.rmStaffId = await generateRMId("RMSTF");
+      doc.rmStaffId = await generateRMId("RMSTF","STORE_STAFF");
     }
   }
   next();
@@ -113,7 +113,7 @@ storeStaffSchema.pre("insertMany", async function(next, docs) {
 storeStaffSchema.pre("findOneAndUpdate", async function(next) {
   const update = this.getUpdate();
   if (update && !update.rmStaffId) {
-    update.rmStaffId = await generateRMId("RMSTF");
+    update.rmStaffId = await generateRMId("RMSTF","STORE_STAFF");
     this.setUpdate(update);
   }
   next();

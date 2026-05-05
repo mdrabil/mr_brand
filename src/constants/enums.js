@@ -1,34 +1,4 @@
-// export const USER_ROLE = Object.freeze({
-//   SUPER_ADMIN: "SUPER_ADMIN",
-//   VENDOR: "VENDOR",
-//   CUSTOMER: "CUSTOMER",
-//   STORE_MANAGER: "STORE_MANAGER",
-//   RIDER: "RIDER",
-//   CHEF: "CHEF"
-// });
 
-// export const USER_ROLE = Object.freeze({
-//   // 🔐 SYSTEM
-//   SUPER_ADMIN: "SUPER_ADMIN",     // Full system access
-//   USER: "USER",     // Full system access
-//   ADMIN: "ADMIN",                 // Platform admin (optional future)
-
-//   // 🏪 STORE LEVEL
-//   VENDOR: "VENDOR",               // Store owner
-//   // STORE_MANAGER: "STORE_MANAGER", // Manages store ops
-//   // STAFF: "STAFF",                 // Store staff (billing, packing)
-//   // CHEF: "CHEF",                   // Kitchen staff
-// AUTHOR:"AUTHOR",
-//   // 🚚 DELIVERY
-//   RIDER: "RIDER",                 // Delivery partner
-//   DELIVERY_MANAGER: "DELIVERY_MANAGER", // Future ops control
-
-//   // 👤 CUSTOMER
-//   // CUSTOMER: "CUSTOMER",           // End user
-
-//   // 📞 SUPPORT
-//   SUPPORT: "SUPPORT"              // Customer support agent
-// });
 
 export const USER_ROLE = Object.freeze({
   SUPER_ADMIN: "SUPER_ADMIN",
@@ -101,6 +71,7 @@ export const COUPON_TYPE = {
   FLAT: "FLAT",
   PERCENT: "PERCENT"
 };
+
 export const PAYMENT_STATUS = Object.freeze({
   INITIATED: "INITIATED",
   SUCCESS: "SUCCESS",
@@ -143,7 +114,17 @@ export const MODULE_KEY = Object.freeze({
   BANNERS:"BANNERS"
 });
 
-// export const MODULE_KEY = Object.freeze({
+
+
+// ✅ Payment methods
+export const PAYMENT_METHODS = Object.freeze({
+  RAZORPAY: "RAZORPAY",
+  PHONEPE: "PHONEPE",
+  PAYTM: "PAYTM",
+  UPI: "UPI",
+  CARD: "CARD",
+  WALLET: "WALLET",
+});
 //   /* ---------------- DASHBOARD ---------------- */
 //   DASHBOARD: "DASHBOARD",
 
