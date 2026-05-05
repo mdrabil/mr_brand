@@ -7,6 +7,7 @@ import Joi from "joi";
 import { USER_ROLE, ORDER_STATUS } from "../constants/enums.js";
 import { generateRMId } from "../utils/rmId.js";
 import { buildStoreFilter, getUserStoreRole } from "../utils/accessHelper.js";
+import mongoose from "mongoose";
 
 // ================== Joi Validation ==================
 const createOrderSchema = Joi.object({
@@ -414,20 +415,21 @@ export const getAllOrders = async (req, res) => {
     let filter = {};
 
     // ================= STORE ACCESS =================
-    const accessFilter = await buildStoreFilter(user, {
-      field: "store",
-      storeId: req.query.store,
-    });
+
+const accessFilter = await buildStoreFilter(user, {
+  field: "store",
+  storeId: store,
+});
+
 
     if (store && store.trim() !== "") {
       filter.store = store;
     }
 
-    filter = {
-      ...filter,
-      ...accessFilter,
-    };
-
+  filter = {
+  ...accessFilter,
+  ...(store ? { store: new mongoose.Types.ObjectId(store) } : {}),
+};
     if (status) filter.status = status;
     if (customer) filter.customer = customer;
     if (category) filter.category = category;
